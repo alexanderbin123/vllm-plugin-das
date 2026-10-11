@@ -146,6 +146,48 @@ def test_pr_static_gate_exports_release_environment_to_consumers() -> None:
     )
 
 
+def test_pr_ci_uses_immutable_event_shas_and_trusted_host_helpers() -> None:
+    workflow = _workflow("hcu-pr-ci.yml")
+    head_sha = "${{ github.event.pull_request.head.sha }}"
+    base_sha = "${{ github.event.pull_request.base.sha }}"
+
+    static = workflow["jobs"]["static-and-select"]
+    trusted_checkout = _named_step(static, "Checkout trusted PR CI bootstrap")
+    head_checkout = _named_step(static, "Checkout PR head revision")
+    resolver = _named_step(static, "Resolve v0.28.1 HCU environment")
+    verify = _named_step(static, "Verify patch contracts")
+    select = _named_step(static, "Select HCU matrix")
+
+    assert trusted_checkout["with"]["ref"] == base_sha
+    assert head_checkout["with"]["ref"] == head_sha
+    assert "$RUNNER_TEMP/hcu-ci-scripts/resolve_hcu_ci_environment.py" in resolver[
+        "run"
+    ]
+    assert "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" in verify[
+        "run"
+    ]
+    assert "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" in select[
+        "run"
+    ]
+
+    authorization = workflow["jobs"]["authorize-hcu"]
+    authorization_checkout = _named_step(
+        authorization,
+        "Checkout trusted authorization helpers",
+    )
+    assert authorization_checkout["with"]["ref"] == base_sha
+    assert not any(
+        step.get("name") == "Checkout PR runner helpers"
+        for step in authorization["steps"]
+    )
+
+    selected = workflow["jobs"]["selected-hcu-tests"]
+    assert selected["with"]["tested_ref"] == head_sha
+    assert "merge_commit_sha" not in (REPOSITORY / ".github/workflows/hcu-pr-ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_reusable_hardware_and_image_validation_never_fall_back_to_v0251() -> None:
     selected = _workflow("_selected-hcu-tests.yml")
     validation = _workflow("validate-docker-image.yml")

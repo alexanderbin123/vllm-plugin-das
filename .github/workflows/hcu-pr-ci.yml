@@ -85,9 +85,27 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout PR merge revision
+      - name: Checkout trusted PR CI bootstrap
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          clean: true
+          fetch-depth: 1
+
+      - name: Preserve trusted PR CI bootstrap
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/hcu-ci-scripts"
+          cp .github/scripts/hcu_ci/resolve_hcu_ci_environment.py \
+            "$RUNNER_TEMP/hcu-ci-scripts/"
+          cp scripts/ci/hcu/hcu_ci_resolve_image.sh \
+            scripts/ci/hcu/hcu_ci_run_control_container.sh \
+            "$RUNNER_TEMP/hcu-ci-scripts/"
+
+      - name: Checkout PR head revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
           clean: true
           fetch-depth: 0
 
@@ -97,7 +115,7 @@ jobs:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HCU_CI_IMAGE_V0281: ${{ vars.HCU_CI_IMAGE_V0281 }}
         run: >-
-          python3 .github/scripts/hcu_ci/resolve_hcu_ci_environment.py
+          python3 "$RUNNER_TEMP/hcu-ci-scripts/resolve_hcu_ci_environment.py"
           --ref "$BASE_REF"
           --github-output "$GITHUB_OUTPUT"
 
@@ -128,7 +146,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HCU_CI_IMAGE: ${{ steps.release-environment.outputs.image }}
         run: |
-          bash scripts/ci/hcu/hcu_ci_run_control_container.sh -- bash -lc '
+          bash "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" -- bash -lc '
             set -euo pipefail
             python3.10 --version
             git config --global --add safe.directory "$GITHUB_WORKSPACE"
@@ -154,7 +172,7 @@ jobs:
           ACCURACY_HCU: ${{ contains(github.event.pull_request.labels.*.name, 'accuracy-hcu') }}
           HCU_CI_IMAGE: ${{ steps.release-environment.outputs.image }}
         run: |
-          bash scripts/ci/hcu/hcu_ci_run_control_container.sh -- bash -lc '
+          bash "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" -- bash -lc '
             set -euo pipefail
             git config --global --add safe.directory "$GITHUB_WORKSPACE"
             git cat-file -e "${BASE_SHA}^{commit}"
@@ -237,19 +255,7 @@ jobs:
             exit 1
           fi
 
-      - name: Checkout PR runner helpers
-        uses: actions/checkout@v4
-        with:
-          clean: true
-          fetch-depth: 1
-
-      - name: Preserve PR runner helpers
-        run: |
-          mkdir -p "$RUNNER_TEMP/hcu-ci-scripts"
-          cp scripts/ci/hcu/hcu_ci_resolve_image.sh "$RUNNER_TEMP/hcu-ci-scripts/"
-          cp scripts/ci/hcu/hcu_ci_run_control_container.sh "$RUNNER_TEMP/hcu-ci-scripts/"
-
-      - name: Checkout trusted authorization helper
+      - name: Checkout trusted authorization helpers
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -260,7 +266,7 @@ jobs:
         id: authorization
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: bash "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" -- python3.10 .github/scripts/hcu_ci/check_hcu_ci_authorization.py
+        run: bash scripts/ci/hcu/hcu_ci_run_control_container.sh -- python3.10 .github/scripts/hcu_ci/check_hcu_ci_authorization.py
 
   selected-hcu-tests:
     name: Selected hardware tests
@@ -273,7 +279,7 @@ jobs:
     uses: ./.github/workflows/_selected-hcu-tests.yml
     with:
       matrix: ${{ needs.static-and-select.outputs.matrix }}
-      tested_ref: ${{ github.event.pull_request.merge_commit_sha }}
+      tested_ref: ${{ github.event.pull_request.head.sha }}
       image: ${{ needs.static-and-select.outputs.image }}
     permissions:
       contents: read
