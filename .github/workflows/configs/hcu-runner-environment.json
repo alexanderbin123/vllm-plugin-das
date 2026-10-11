@@ -8,8 +8,8 @@
   "rocm": {
     "environment": "ROCM_PATH",
     "version_file": ".info/rocm_version",
-    "match": "exact",
-    "version": "26.04.1"
+    "match": "release_line",
+    "version": "26.04"
   },
   "distributions": {
     "torch": {
@@ -18,11 +18,11 @@
     },
     "vllm": {
       "match": "prefix",
-      "version": "0.28.1+"
+      "version": "0.28.1"
     },
     "vllm-hcu": {
       "match": "prefix",
-      "version": "0.28.1rc1"
+      "version": "0.28.1"
     },
     "aiter": {
       "match": "prefix",

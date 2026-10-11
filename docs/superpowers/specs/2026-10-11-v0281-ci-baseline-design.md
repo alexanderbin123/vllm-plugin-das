@@ -16,7 +16,9 @@ scope.
 
 The checked-out branch remains the source of truth for its environment lock.
 On `v0.28.1-dev`, `.github/workflows/configs/hcu-runner-environment.json` must
-describe the v0.28.1/DTK 26.04.1 runtime actually built by that branch.
+describe the v0.28.1 release line on the DTK 26.04 release line. Patch, release
+candidate, nightly, and local build suffixes within those lines remain valid;
+other vLLM or DTK release lines fail preflight.
 
 HCU workflows must select a version-scoped repository variable,
 `HCU_CI_IMAGE_V0281`. The generic `HCU_CI_IMAGE` variable may remain available

@@ -387,11 +387,16 @@ def test_v0281_runner_lock_matches_audited_runtime(
     lock = json.loads(lock_path.read_text(encoding="utf-8"))
     assert lock["python"] == "3.10.12"
     assert lock["torch_hip"] == {"match": "prefix", "version": "6.3."}
-    assert lock["rocm"]["version"] == "26.04.1"
+    assert lock["rocm"] == {
+        "environment": "ROCM_PATH",
+        "version_file": ".info/rocm_version",
+        "match": "release_line",
+        "version": "26.04",
+    }
     assert lock["distributions"] == {
         "torch": {"match": "prefix", "version": "2.11.0+"},
-        "vllm": {"match": "prefix", "version": "0.28.1+"},
-        "vllm-hcu": {"match": "prefix", "version": "0.28.1rc1"},
+        "vllm": {"match": "prefix", "version": "0.28.1"},
+        "vllm-hcu": {"match": "prefix", "version": "0.28.1"},
         "aiter": {"match": "prefix", "version": "0.1."},
         "pytest": {"match": "exact", "version": "9.1.1"},
     }

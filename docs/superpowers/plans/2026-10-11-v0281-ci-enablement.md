@@ -14,7 +14,7 @@
 
 - Target branch is `v0.28.1-dev`; do not change v0.25.1 release behavior.
 - v0.28.1 CI must use `HCU_CI_IMAGE_V0281` and must never fall back to `vllm:0.25.1-latest`.
-- The checked-out environment lock must require vLLM 0.28.1, vLLM-HCU 0.28.1rc1, Torch 2.11.0, and DTK/ROCm 26.04.1 compatibility.
+- The checked-out environment lock must require the vLLM and vLLM-HCU `0.28.1` prefixes, Torch 2.11.0, and the DTK/ROCm `26.04` release line.
 - Keep HCU business adapters lazy even where upstream vLLM 0.28.1 imports framework modules eagerly.
 - Keep the HCU-only bootstrap test strict; do not hide a missing locally built `hcu_ops.so`.
 
@@ -117,11 +117,11 @@ git commit -m "ci: enable release-isolated v0.28.1 gates"
 
 **Interfaces:**
 - Consumes: existing `_load_environment_lock` and `_check_environment_lock` APIs.
-- Produces: a schema-version-1 lock requiring Python 3.10.12, Torch `2.11.0+`, HIP `6.3.`, DTK/ROCm `26.04.1`, vLLM `0.28.1+`, vLLM-HCU `0.28.1rc1`, AITER `0.1.`, and pytest 9.1.1.
+- Produces: a schema-version-1 lock requiring Python 3.10.12, Torch `2.11.0+`, HIP `6.3.`, the DTK/ROCm `26.04` release line, vLLM `0.28.1`, vLLM-HCU `0.28.1`, AITER `0.1.`, and pytest 9.1.1. The vLLM values use prefix matching so release-candidate, nightly, patch, and local build suffixes remain valid.
 
 - [ ] **Step 1: Write a failing branch-lock contract test**
 
-Assert the literal compatibility prefixes above and verify `_check_environment_lock` accepts a representative installed v0.28.1 environment but rejects a v0.25.1 vLLM distribution.
+Assert the literal compatibility prefixes above and verify `_check_environment_lock` accepts representative installed v0.28.1 and DTK 26.04 builds but rejects a v0.25.1 vLLM distribution.
 
 - [ ] **Step 2: Run test to verify RED**
 
@@ -131,7 +131,7 @@ Expected: failure because the lock still requires v0.25.1 and DTK 26.04.
 
 - [ ] **Step 3: Update only the release-specific values**
 
-Keep schema and matching semantics unchanged; update version prefixes and DTK/ROCm value to the audited v0.28.1 runtime.
+Keep schema unchanged; use prefix matching for both vLLM distributions and release-line matching for DTK/ROCm.
 
 - [ ] **Step 4: Run test to verify GREEN**
 
@@ -285,4 +285,3 @@ Expected: all portable tests pass; if the local missing `hcu_ops.so` bootstrap t
 Run: `git diff --check && git status --short && git log --oneline origin/v0.28.1-dev..HEAD`
 
 Expected: no whitespace errors or uncommitted files.
-
