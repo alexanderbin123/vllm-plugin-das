@@ -1132,6 +1132,7 @@ def _dpsk_namespace(logger: _WarningLogger, calls: list[tuple[str, tuple, dict]]
 
     return {
         "torch": torch,
+        "henvs": SimpleNamespace(VLLM_HCU_USE_CUSTOM_OPS=False),
         "MoEActivation": SimpleNamespace(SILU="silu"),
         "compute_aligned_M": lambda **_kwargs: 1,
         "deepgemm_moe_permute": lambda **kwargs: (
