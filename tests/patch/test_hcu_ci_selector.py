@@ -471,13 +471,21 @@ def test_v0281_runner_lock_matches_audited_runtime(
     )
     assert report["rocm"] == "26.04.1"
 
-    incompatible = dict(versions, vllm="0.25.1+das.legacy")
-    with pytest.raises(PreflightError, match="distribution drift for vllm"):
-        _check_environment_lock(
-            lock_path,
-            versions=incompatible,
-            torch_hip="6.3.26113",
-        )
+    for distribution, incompatible_version in (
+        ("vllm", "0.25.1+das.legacy"),
+        ("vllm", "0.28.10+future"),
+        ("vllm-hcu", "0.28.10rc1+future"),
+    ):
+        incompatible = dict(versions, **{distribution: incompatible_version})
+        with pytest.raises(
+            PreflightError,
+            match=f"distribution drift for {distribution}",
+        ):
+            _check_environment_lock(
+                lock_path,
+                versions=incompatible,
+                torch_hip="6.3.26113",
+            )
 
 
 @pytest.fixture
