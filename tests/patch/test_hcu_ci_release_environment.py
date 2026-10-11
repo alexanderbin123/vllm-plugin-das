@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 
 REPOSITORY = Path(__file__).resolve().parents[2]
@@ -20,6 +22,15 @@ from resolve_hcu_ci_environment import (  # noqa: E402
     main,
     resolve_release_environment,
 )
+
+
+def _workflow(name: str) -> dict:
+    path = REPOSITORY / ".github" / "workflows" / name
+    return yaml.load(path.read_text(encoding="utf-8"), Loader=yaml.BaseLoader)
+
+
+def _named_step(job: dict, name: str) -> dict:
+    return next(step for step in job["steps"] if step.get("name") == name)
 
 
 def test_v0281_ref_resolves_versioned_image_and_checked_out_lock() -> None:
@@ -80,3 +91,84 @@ def test_cli_writes_complete_github_outputs(
         "image=harbor.example/vllm:v0.28.1",
         "environment_lock=.github/workflows/configs/hcu-runner-environment.json",
     ]
+
+
+def test_pull_request_gates_target_v0281_dev() -> None:
+    for workflow_name in ("hcu-pr-ci.yml", "quality-gate.yml"):
+        workflow = _workflow(workflow_name)
+        assert workflow["on"]["pull_request"]["branches"] == ["v0.28.1-dev"]
+
+
+def test_pr_static_gate_exports_release_environment_to_consumers() -> None:
+    workflow = _workflow("hcu-pr-ci.yml")
+    static = workflow["jobs"]["static-and-select"]
+    resolver = _named_step(static, "Resolve v0.28.1 HCU environment")
+
+    assert resolver["id"] == "release-environment"
+    assert resolver["env"] == {
+        "BASE_REF": "${{ github.event.pull_request.base.ref }}",
+        "HCU_CI_IMAGE_V0281": "${{ vars.HCU_CI_IMAGE_V0281 }}",
+    }
+    assert "resolve_hcu_ci_environment.py" in resolver["run"]
+    assert '--ref "$BASE_REF"' in resolver["run"]
+    assert '--github-output "$GITHUB_OUTPUT"' in resolver["run"]
+    assert static["outputs"]["image"] == (
+        "${{ steps.release-environment.outputs.image }}"
+    )
+    assert static["outputs"]["environment_lock"] == (
+        "${{ steps.release-environment.outputs.environment_lock }}"
+    )
+    verify = _named_step(static, "Verify patch contracts")
+    assert (
+        '--environment-lock "${{ '
+        'steps.release-environment.outputs.environment_lock }}"'
+    ) in verify["run"]
+
+    authorization = workflow["jobs"]["authorize-hcu"]
+    assert authorization["env"]["HCU_CI_IMAGE"] == (
+        "${{ needs.static-and-select.outputs.image }}"
+    )
+    selected = workflow["jobs"]["selected-hcu-tests"]
+    assert selected["with"]["image"] == (
+        "${{ needs.static-and-select.outputs.image }}"
+    )
+
+
+def test_reusable_hardware_and_image_validation_never_fall_back_to_v0251() -> None:
+    selected = _workflow("_selected-hcu-tests.yml")
+    validation = _workflow("validate-docker-image.yml")
+
+    assert selected["jobs"]["resolve-image"]["env"]["SOURCE_IMAGE"] == (
+        "${{ inputs.image }}"
+    )
+    validation_source = _named_step(
+        validation["jobs"]["validate"], "Resolve latest image digest"
+    )["env"]["SOURCE_IMAGE"]
+    assert validation_source == (
+        "${{ inputs.image || vars.HCU_CI_IMAGE_V0281 }}"
+    )
+    assert "0.25.1-latest" not in json.dumps(selected)
+    assert "0.25.1-latest" not in json.dumps(validation)
+
+
+def test_nightly_and_patch_coverage_use_v0281_environment() -> None:
+    nightly = _workflow("nightly-hcu.yml")
+    patch_coverage = _workflow("patch-coverage.yml")
+
+    assert nightly["on"]["workflow_dispatch"]["inputs"]["ref"]["default"] == (
+        "v0.28.1-dev"
+    )
+    assert nightly["jobs"]["prepare"]["container"]["image"] == (
+        "${{ vars.HCU_CI_IMAGE_V0281 }}"
+    )
+    assert nightly["jobs"]["hardware"]["with"]["image"] == (
+        "${{ inputs.image || vars.HCU_CI_IMAGE_V0281 }}"
+    )
+    assert nightly["jobs"]["quarantine-retest"]["with"]["image"] == (
+        "${{ inputs.image || vars.HCU_CI_IMAGE_V0281 }}"
+    )
+
+    assert patch_coverage["on"]["push"]["branches"] == ["v0.28.1-dev"]
+    assert patch_coverage["jobs"]["static-patch-gate"]["container"][
+        "image"
+    ] == "${{ vars.HCU_CI_IMAGE_V0281 }}"

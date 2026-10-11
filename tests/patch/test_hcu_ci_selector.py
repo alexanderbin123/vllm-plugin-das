@@ -753,23 +753,6 @@ def test_selected_hcu_workflow_pins_mutable_image_before_matrix() -> None:
     assert "HCU_CI_IMAGE: ${{ needs.resolve-image.outputs.image }}" in source
 
 
-def test_fork_pr_uses_non_secret_hcu_image_fallback() -> None:
-    default_image = (
-        "10.16.1.152:5000/jenkins/model_test_env/"
-        "vllm:0.25.1-latest"
-    )
-    pr_workflow = (
-        REPOSITORY / ".github/workflows/hcu-pr-ci.yml"
-    ).read_text(encoding="utf-8")
-    selected_workflow = (
-        REPOSITORY / ".github/workflows/_selected-hcu-tests.yml"
-    ).read_text(encoding="utf-8")
-
-    assert default_image in pr_workflow
-    assert default_image in selected_workflow
-    assert "Repository variables are unavailable" in pr_workflow
-
-
 def test_release_push_is_independent_from_image_validation() -> None:
     release = (
         REPOSITORY / ".github/workflows/release-docker-image.yml"
@@ -799,7 +782,8 @@ def test_release_push_is_independent_from_image_validation() -> None:
     assert "image:" in validation
     assert "required: true" in validation
     assert "actions/download-artifact@v4" not in validation
-    assert "vllm:0.25.1-latest" in validation
+    assert "vllm:0.25.1-latest" not in validation
+    assert "HCU_CI_IMAGE_V0281" in validation
     assert 'docker pull "$SOURCE_IMAGE"' in validation
     assert "tools/run_patch_tests.py --suite contract" in validation
     assert "promote_latest" not in validation
