@@ -377,6 +377,55 @@ def test_environment_lock_allows_compatible_hip_prefix(
         )
 
 
+def test_v0281_runner_lock_matches_audited_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lock_path = (
+        REPOSITORY / ".github/workflows/configs/hcu-runner-environment.json"
+    )
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    assert lock["python"] == "3.10.12"
+    assert lock["torch_hip"] == {"match": "prefix", "version": "6.3."}
+    assert lock["rocm"]["version"] == "26.04.1"
+    assert lock["distributions"] == {
+        "torch": {"match": "prefix", "version": "2.11.0+"},
+        "vllm": {"match": "prefix", "version": "0.28.1+"},
+        "vllm-hcu": {"match": "prefix", "version": "0.28.1rc1"},
+        "aiter": {"match": "prefix", "version": "0.1."},
+        "pytest": {"match": "exact", "version": "9.1.1"},
+    }
+
+    runtime_root = tmp_path / "dtk"
+    version_file = runtime_root / lock["rocm"]["version_file"]
+    version_file.parent.mkdir(parents=True)
+    version_file.write_text("26.04.1\n", encoding="utf-8")
+    monkeypatch.setenv("ROCM_PATH", str(runtime_root))
+    monkeypatch.setattr("hcu_ci_preflight.platform.python_version", lambda: "3.10.12")
+    versions = {
+        "torch": "2.11.0+dtk2604.2609291046.ge12687",
+        "vllm": "0.28.1+dtk2604.torch2110.2609171627.g77acaf",
+        "vllm-hcu": "0.28.1rc1.dev491+das.5d5fe2f.dtk26041",
+        "aiter": "0.1.6+dtk2604.torch2110.2609300837.gf9b9c8",
+        "pytest": "9.1.1",
+    }
+
+    report = _check_environment_lock(
+        lock_path,
+        versions=versions,
+        torch_hip="6.3.26113",
+    )
+    assert report["rocm"] == "26.04.1"
+
+    incompatible = dict(versions, vllm="0.25.1+das.legacy")
+    with pytest.raises(PreflightError, match="distribution drift for vllm"):
+        _check_environment_lock(
+            lock_path,
+            versions=incompatible,
+            torch_hip="6.3.26113",
+        )
+
+
 @pytest.fixture
 def dtk_environment_lock(
     tmp_path: Path,
@@ -386,6 +435,9 @@ def dtk_environment_lock(
         (REPOSITORY / ".github/workflows/configs/hcu-runner-environment.json")
         .read_text(encoding="utf-8")
     )
+    # Exercise the generic release-line matcher independently of the branch's
+    # exact audited DTK patch release.
+    lock["rocm"].update({"match": "release_line", "version": "26.04"})
     runtime_root = tmp_path / "dtk"
     version_file = runtime_root / lock["rocm"]["version_file"]
     version_file.parent.mkdir(parents=True)
