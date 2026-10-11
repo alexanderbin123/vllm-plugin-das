@@ -127,4 +127,3 @@ Expected: all pass.
 - [ ] **Step 2: Trigger or observe the release image workflow after push**
 
 Confirm the Ray layer resolves from the configured internal index, the image is pushed, and `validate-image` receives the exact dated image output. Record the workflow URL and any runner-only failure without masking it.
-
