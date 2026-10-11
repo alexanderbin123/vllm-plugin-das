@@ -85,6 +85,7 @@ RUN wget -q "${RESOURCE_SERVER_URL}/pkg/shca/others/20260706/shca-tools-ofed_3.5
 ARG VLLM_VERSION
 RUN pip install --no-cache-dir ninja wheel setuptools \
     && /tmp/install_vllm_runtime_dependencies.sh /tmp/requirements-vllm-runtime.txt \
+    && pip install --no-cache-dir -r /tmp/requirements-test.txt \
     && pip install --no-cache-dir amdsmi==1.0.0+630c16a6.dirty \
     && pip install --no-cache-dir cupy \
     && pip install --no-cache-dir vllm==0.28.1 \

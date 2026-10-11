@@ -13,6 +13,7 @@ INSTALLER = (
     REPOSITORY_ROOT / "scripts/ci/hcu/install_vllm_runtime_dependencies.sh"
 )
 REQUIREMENTS = REPOSITORY_ROOT / "docker/requirements-vllm-runtime.txt"
+TEST_REQUIREMENTS = REPOSITORY_ROOT / "requirements-test.txt"
 DOCKERFILE = REPOSITORY_ROOT / "docker/Dockerfile"
 DOCKERIGNORE = REPOSITORY_ROOT / ".dockerignore"
 
@@ -113,6 +114,18 @@ def test_runtime_requirements_pin_ray_extras_and_pandas() -> None:
     assert str(requirements["pandas"].specifier) == "==2.3.3"
 
 
+def test_test_requirements_pin_ci_runner_and_official_evalscope() -> None:
+    requirements = {
+        requirement.name: requirement
+        for line in TEST_REQUIREMENTS.read_text(encoding="utf-8").splitlines()
+        if (stripped := line.strip()) and not stripped.startswith("#")
+        for requirement in [Requirement(stripped)]
+    }
+
+    assert str(requirements["pytest"].specifier) == "==9.1.1"
+    assert str(requirements["evalscope"].specifier) == "==1.9.1"
+
+
 def _dockerfile_instructions() -> list[str]:
     instructions: list[str] = []
     current: list[str] = []
@@ -153,6 +166,26 @@ def test_dockerfile_copies_runtime_installer_before_framework_layer() -> None:
     assert installer_copy < framework_run
     assert "/tmp/install_vllm_runtime_dependencies.sh" in instructions[framework_run]
     assert "/tmp/requirements-vllm-runtime.txt" in instructions[framework_run]
+
+
+def test_dockerfile_installs_registered_test_dependencies() -> None:
+    instructions = _dockerfile_instructions()
+    requirements_copy = next(
+        index
+        for index, instruction in enumerate(instructions)
+        if instruction.startswith("COPY ") and "requirements-test.txt" in instruction
+    )
+    framework_run = next(
+        index
+        for index, instruction in enumerate(instructions)
+        if instruction.startswith("RUN ")
+        and "pip install --no-cache-dir ninja wheel setuptools" in instruction
+    )
+
+    assert requirements_copy < framework_run
+    assert "pip install --no-cache-dir -r /tmp/requirements-test.txt" in instructions[
+        framework_run
+    ]
 
 
 def test_dockerfile_does_not_override_the_index_for_ray() -> None:
