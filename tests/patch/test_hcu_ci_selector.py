@@ -170,6 +170,55 @@ def test_nightly_matrix_explicitly_covers_extended_models_and_topology() -> None
     }.issubset(registry_jobs)
 
 
+def test_kimi_k25_humaneval_routes_to_eight_card_evalscope_job() -> None:
+    config = _config()
+    job = config["jobs"]["kimi-k25-humaneval"]
+    assert job == {
+        "runner": "hcu-linux-gfx938-8",
+        "arch": "gfx938",
+        "cards": 8,
+        "suite": "model",
+        "pytest_args": ["-k", "kimi_k25_humaneval_evalscope_server"],
+        "timeout_minutes": 360,
+        "requirements": [
+            {
+                "kind": "distribution",
+                "name": "evalscope",
+                "match": "exact",
+                "version": "1.9.1",
+            },
+            {
+                "kind": "model",
+                "env": "VLLM_HCU_KIMI_K25_MODEL",
+                "relative": "Kimi-K2.5",
+            },
+        ],
+    }
+
+    target = (
+        "tests/integration/server/test_evalscope_kimi_k25_humaneval.py::"
+        "test_kimi_k25_humaneval_evalscope_server"
+    )
+    assert any(
+        registration.job == "kimi-k25-humaneval"
+        and registration.target == target
+        and registration.est_time == 14400
+        and registration.disabled is None
+        for registration in parse_registry()
+    )
+    assert "kimi-k25-humaneval" in {
+        item["registry_job"] for item in build_matrix(config, profile="nightly")
+    }
+
+    jobs, groups, fallback = select_jobs(
+        config,
+        ["tests/models/kimi_k25_humaneval_evalscope.yaml"],
+    )
+    assert {item["registry_job"] for item in jobs} == {"kimi-k25-humaneval"}
+    assert groups == ["kimi-k25-evalscope"]
+    assert fallback is False
+
+
 def test_every_registered_hcu_test_file_routes_to_one_of_its_jobs() -> None:
     jobs_by_file: dict[str, set[str]] = defaultdict(set)
     for registration in parse_registry():
@@ -582,6 +631,7 @@ def test_evalscope_is_required_only_by_evalscope_jobs() -> None:
         "deepseek-gsm8k",
         "glm52-pcp",
         "glm53-flash-channel-fp8-humaneval",
+        "kimi-k25-humaneval",
     }
     expected = {
         "kind": "distribution",

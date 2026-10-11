@@ -375,6 +375,14 @@ register_hcu_ci(
     est_time=14400,
 )
 register_hcu_ci(
+    job="kimi-k25-humaneval",
+    target=(
+        "tests/integration/server/test_evalscope_kimi_k25_humaneval.py::"
+        "test_kimi_k25_humaneval_evalscope_server"
+    ),
+    est_time=14400,
+)
+register_hcu_ci(
     job="single-node-topology",
     target="tests/distributed/single_node/test_topology_contracts.py",
     est_time=60,
