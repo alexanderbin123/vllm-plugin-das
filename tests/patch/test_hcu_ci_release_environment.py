@@ -187,6 +187,20 @@ def test_image_validation_exposes_the_hcu_runtime_to_the_container() -> None:
     assert "-v /opt/hyhal:/opt/hyhal:ro" in command
 
 
+def test_image_validation_runs_portable_and_hcu_contracts() -> None:
+    validation = _workflow("validate-docker-image.yml")
+    command = _named_step(
+        validation["jobs"]["validate"], "Validate published image"
+    )["run"]
+
+    assert "tools/run_patch_tests.py --suite contract --" in command
+    assert "tools/run_patch_tests.py --suite contract-hcu --" in command
+    assert (
+        "--deselect tests/patch/test_clean_process_bootstrap.py::"
+        "test_clean_hcu_process_imports_every_enabled_patch_target"
+    ) in command
+
+
 def test_nightly_and_patch_coverage_use_v0281_environment() -> None:
     nightly = _workflow("nightly-hcu.yml")
     patch_coverage = _workflow("patch-coverage.yml")

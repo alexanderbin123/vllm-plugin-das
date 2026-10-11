@@ -154,6 +154,12 @@ jobs:
               python3 .github/scripts/hcu_ci/hcu_ci_preflight.py --check-environment-only
               python3 -c '\''import importlib.metadata; import torch; [print(f"{name}={importlib.metadata.version(name)}") for name in ("torch", "vllm", "vllm-hcu", "pytest")]; print(f"torch_hip={torch.version.hip}")'\''
               python3 tools/run_patch_tests.py --suite contract -- -o cache_dir=/tmp/hcu-ci-pytest-cache
+              # The checkout is mounted read-only and intentionally has no locally
+              # built hcu_ops extension. The source-build smoke remains covered by
+              # the selected HCU job, which builds the checkout before execution.
+              python3 tools/run_patch_tests.py --suite contract-hcu -- \
+                --deselect tests/patch/test_clean_process_bootstrap.py::test_clean_hcu_process_imports_every_enabled_patch_target \
+                -o cache_dir=/tmp/hcu-ci-pytest-cache-hcu
             '
 
       - name: Clean workspace

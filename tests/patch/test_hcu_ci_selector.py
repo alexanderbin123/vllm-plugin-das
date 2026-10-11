@@ -786,6 +786,15 @@ def test_hcu_control_container_uses_runner_identity() -> None:
     assert '--env "USER=$runner_user"' in source
 
 
+def test_hcu_control_container_does_not_expose_accelerator_devices() -> None:
+    source = (
+        REPOSITORY / "scripts/ci/hcu/hcu_ci_run_control_container.sh"
+    ).read_text(encoding="utf-8")
+    assert "--privileged" not in source
+    assert "/dev/kfd" not in source
+    assert "/dev/dri" not in source
+
+
 def test_workspace_repairs_detect_wrong_owners_and_directories() -> None:
     for relative in (
         ".github/workflows/hcu-pr-ci.yml",

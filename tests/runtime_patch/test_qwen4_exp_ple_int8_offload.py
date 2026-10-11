@@ -493,12 +493,14 @@ def test_cpu_offload_selects_uva_method(monkeypatch):
 def test_uva_create_weights_allocates_on_cpu():
     import vllm.distributed.parallel_state as ps
     from vllm.config import VllmConfig, set_current_vllm_config
+    from vllm.config.device import DeviceConfig
     from vllm.distributed import (
         init_distributed_environment,
         initialize_model_parallel,
     )
 
-    with set_current_vllm_config(VllmConfig()):
+    config = VllmConfig(device_config=DeviceConfig(device="cpu"))
+    with set_current_vllm_config(config):
         if ps._TP is None:
             init_distributed_environment(
                 world_size=1,

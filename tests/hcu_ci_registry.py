@@ -119,6 +119,36 @@ register_hcu_ci(
     target="tests/runtime_patch/test_lightop_categorized_api.py",
     est_time=60,
 )
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_deepseek_v4_dspark_patches.py",
+    est_time=60,
+)
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_glm53_native_mhc.py",
+    est_time=60,
+)
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_platform_hcu_config.py",
+    est_time=60,
+)
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_qwen4_exp_pp.py",
+    est_time=60,
+)
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_qwen4_exp_qsa_fp8.py",
+    est_time=60,
+)
+register_hcu_ci(
+    job="contract-hcu-gfx936",
+    target="tests/runtime_patch/test_sparse_indexer_loading.py",
+    est_time=60,
+)
 
 register_hcu_ci(
     job="integration-smoke-gfx938",

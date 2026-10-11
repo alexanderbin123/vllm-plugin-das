@@ -773,7 +773,11 @@ def test_contiguous_deep_gemm_rejects_top_level_activation_and_grouped_gemm(
     legacy.fuse_silu_mul_quant = lambda *_args, **_kwargs: legacy_calls.append(
         "activation"
     )
-    _install_lightop(monkeypatch, legacy=legacy)
+    _install_lightop(
+        monkeypatch,
+        legacy=legacy,
+        activation=ModuleType("lightop.activation"),
+    )
     apply = _method(
         "vllm_hcu/model_executor/layers/fused_moe/experts/deep_gemm_moe.py",
         "DeepGemmExperts",
@@ -865,7 +869,11 @@ def test_masked_deep_gemm_rejects_top_level_activation_and_grouped_gemm(
     legacy.fuse_silu_mul_quant_ep = lambda *_args, **_kwargs: legacy_calls.append(
         "activation"
     )
-    _install_lightop(monkeypatch, legacy=legacy)
+    _install_lightop(
+        monkeypatch,
+        legacy=legacy,
+        activation=ModuleType("lightop.activation"),
+    )
     namespace = {
         "torch": torch,
         "MoEActivation": SimpleNamespace(SILU="silu"),
