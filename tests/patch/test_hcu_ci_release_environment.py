@@ -181,10 +181,35 @@ def test_image_validation_exposes_the_hcu_runtime_to_the_container() -> None:
         validation["jobs"]["validate"], "Validate published image"
     )["run"]
 
-    assert "--privileged" in command
+    assert "--privileged" not in command
     assert "--device /dev/kfd:/dev/kfd" in command
     assert "--device /dev/dri:/dev/dri" in command
     assert "-v /opt/hyhal:/opt/hyhal:ro" in command
+
+
+def test_image_validation_rejects_images_outside_release_repository() -> None:
+    validation = _workflow("validate-docker-image.yml")
+    command = _named_step(
+        validation["jobs"]["validate"], "Resolve latest image digest"
+    )["run"]
+
+    assert (
+        'allowed_repository="${HARBOR_SITE}/${HARBOR_NAMESPACE}/vllm"'
+        in command
+    )
+    assert 'source_repository="${SOURCE_IMAGE%%@*}"' in command
+    assert 'if [[ "$source_repository" != "$allowed_repository" ]]' in command
+
+
+def test_image_validation_manual_dispatch_has_no_image_override() -> None:
+    validation = _workflow("validate-docker-image.yml")
+    validate = validation["jobs"]["validate"]
+
+    assert validation["on"]["workflow_dispatch"] == ""
+    assert "if" not in validate
+    authorization = _named_step(validate, "Authorize release ref")
+    assert '[[ "$GITHUB_REF" != "refs/heads/v0.28.1-dev" ]]' in authorization["run"]
+    assert "exit 2" in authorization["run"]
 
 
 def test_image_validation_runs_portable_and_hcu_contracts() -> None:

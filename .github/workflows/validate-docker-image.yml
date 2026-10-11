@@ -4,7 +4,7 @@
 name: validate-docker-image
 
 # 由 docker-image (release-docker-image.yml) 构建并推送成功后作为 reusable workflow 被调用,
-# 传入本次构建的镜像名; 手动触发留空时使用 v0.28.1 专用仓库变量。
+# 传入本次构建的镜像名; 手动触发仅使用 v0.28.1 专用仓库变量。
 on:
   workflow_call:
     inputs:
@@ -13,12 +13,6 @@ on:
         required: true
         type: string
   workflow_dispatch:
-    inputs:
-      image:
-        description: Optional image override; defaults to HCU_CI_IMAGE_V0281
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: read
@@ -37,6 +31,13 @@ jobs:
     name: Validate published image
     runs-on: bw18
     steps:
+      - name: Authorize release ref
+        run: |
+          if [[ "$GITHUB_REF" != "refs/heads/v0.28.1-dev" ]]; then
+            echo "HCU image validation only accepts v0.28.1-dev" >&2
+            exit 2
+          fi
+
       - name: Repair self-hosted workspace before checkout
         run: |
           set -euo pipefail
@@ -109,19 +110,24 @@ jobs:
             echo "HCU_CI_IMAGE_V0281 or an explicit image input is required" >&2
             exit 2
           fi
+          allowed_repository="${HARBOR_SITE}/${HARBOR_NAMESPACE}/vllm"
+          source_repository="${SOURCE_IMAGE%%@*}"
+          last_component="${source_repository##*/}"
+          if [[ "$last_component" == *:* ]]; then
+            source_repository="${source_repository%:*}"
+          fi
+          if [[ "$source_repository" != "$allowed_repository" ]]; then
+            echo "Refusing image outside approved repository: $SOURCE_IMAGE" >&2
+            exit 2
+          fi
           docker pull "$SOURCE_IMAGE"
           if [[ "$SOURCE_IMAGE" =~ @sha256:[0-9a-fA-F]{64}$ ]]; then
             digest_image="$SOURCE_IMAGE"
           else
-            repository="$SOURCE_IMAGE"
-            last_component="${repository##*/}"
-            if [[ "$last_component" == *:* ]]; then
-              repository="${repository%:*}"
-            fi
             digest_image="$(
               docker image inspect "$SOURCE_IMAGE" \
                 --format '{{range .RepoDigests}}{{println .}}{{end}}' \
-                | awk -v prefix="${repository}@" 'index($0, prefix) == 1 {print; exit}'
+                | awk -v prefix="${source_repository}@" 'index($0, prefix) == 1 {print; exit}'
             )"
           fi
           if [[ ! "$digest_image" =~ @sha256:[0-9a-fA-F]{64}$ ]]; then
@@ -137,7 +143,6 @@ jobs:
           DIGEST_IMAGE: ${{ steps.image.outputs.digest }}
         run: |
           docker run --rm \
-            --privileged \
             --cap-add=SYS_PTRACE \
             --device /dev/kfd:/dev/kfd \
             --device /dev/dri:/dev/dri \
