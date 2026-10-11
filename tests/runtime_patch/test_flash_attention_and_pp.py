@@ -244,6 +244,26 @@ def test_hcu_fa_boundary_rejects_vendor_build_without_known_gather_fix(
         )
 
 
+@pytest.mark.parametrize(
+    "compatible_version",
+    [
+        _TEST_FLASH_ATTN_VERSION,
+        "2.8.4+dtk2604.torch2110.2610111419.gdf2889",
+    ],
+)
+def test_hcu_fa_boundary_accepts_dtk2604_build_at_or_after_gather_fix(
+    monkeypatch: pytest.MonkeyPatch,
+    compatible_version: str,
+) -> None:
+    module, _ = _load_hcu_fa_utils_module(
+        monkeypatch,
+        kv_cache_layout="HND",
+        flash_attn_version=compatible_version,
+    )
+
+    assert module.__name__ == "vllm_hcu.v1.attention.backends.fa_utils"
+
+
 @pytest.mark.parametrize("layout", ["NHD", "HND"])
 @pytest.mark.parametrize("dtype", [torch.bfloat16, torch.float8_e5m2])
 @pytest.mark.parametrize("positional", [False, True])
