@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import sys
 from pathlib import Path
@@ -22,6 +23,17 @@ from resolve_hcu_ci_environment import (  # noqa: E402
     main,
     resolve_release_environment,
 )
+
+
+def test_release_environment_resolver_avoids_post_python36_syntax_and_stdlib() -> None:
+    source = (CI_SCRIPTS / "resolve_hcu_ci_environment.py").read_text(
+        encoding="utf-8"
+    )
+
+    ast.parse(source, feature_version=(3, 6))
+    assert "from __future__ import annotations" not in source
+    assert "from dataclasses import dataclass" not in source
+    assert " | None" not in source
 
 
 def _workflow(name: str) -> dict:

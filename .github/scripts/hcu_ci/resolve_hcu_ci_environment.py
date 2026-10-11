@@ -2,14 +2,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 Hygon Information Technology Co., Ltd.
 """Resolve release-specific inputs for HCU CI workflows."""
 
-from __future__ import annotations
-
 import argparse
 import os
 import sys
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from pathlib import Path
+from typing import Mapping, NamedTuple, Optional, Sequence
 
 
 ENVIRONMENT_LOCK = ".github/workflows/configs/hcu-runner-environment.json"
@@ -21,8 +18,7 @@ class ReleaseEnvironmentError(RuntimeError):
     """Raised when a release has no usable HCU CI environment."""
 
 
-@dataclass(frozen=True)
-class ReleaseEnvironment:
+class ReleaseEnvironment(NamedTuple):
     image: str
     environment_lock: str
 
@@ -50,7 +46,7 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _parser().parse_args(argv)
     try:
         resolved = resolve_release_environment(args.ref, os.environ)
