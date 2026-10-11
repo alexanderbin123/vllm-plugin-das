@@ -96,8 +96,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/hcu-ci-scripts"
-          cp .github/scripts/hcu_ci/resolve_hcu_ci_environment.py \
-            "$RUNNER_TEMP/hcu-ci-scripts/"
           cp scripts/ci/hcu/hcu_ci_resolve_image.sh \
             scripts/ci/hcu/hcu_ci_run_control_container.sh \
             "$RUNNER_TEMP/hcu-ci-scripts/"
@@ -114,10 +112,20 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           HCU_CI_IMAGE_V0281: ${{ vars.HCU_CI_IMAGE_V0281 }}
-        run: >-
-          python3 "$RUNNER_TEMP/hcu-ci-scripts/resolve_hcu_ci_environment.py"
-          --ref "$BASE_REF"
-          --github-output "$GITHUB_OUTPUT"
+        run: |
+          set -euo pipefail
+          if [[ "$BASE_REF" != "v0.28.1-dev" ]]; then
+            echo "unsupported HCU CI release ref: $BASE_REF" >&2
+            exit 2
+          fi
+          if [[ -z "${HCU_CI_IMAGE_V0281//[[:space:]]/}" ]]; then
+            echo "HCU_CI_IMAGE_V0281 is required for $BASE_REF" >&2
+            exit 2
+          fi
+          {
+            echo "image=$HCU_CI_IMAGE_V0281"
+            echo "environment_lock=.github/workflows/configs/hcu-runner-environment.json"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Fetch PR diff endpoints
         env:

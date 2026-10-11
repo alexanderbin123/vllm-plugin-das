@@ -121,9 +121,13 @@ def test_pr_static_gate_exports_release_environment_to_consumers() -> None:
         "BASE_REF": "${{ github.event.pull_request.base.ref }}",
         "HCU_CI_IMAGE_V0281": "${{ vars.HCU_CI_IMAGE_V0281 }}",
     }
-    assert "resolve_hcu_ci_environment.py" in resolver["run"]
-    assert '--ref "$BASE_REF"' in resolver["run"]
-    assert '--github-output "$GITHUB_OUTPUT"' in resolver["run"]
+    assert '[[ "$BASE_REF" != "v0.28.1-dev" ]]' in resolver["run"]
+    assert "HCU_CI_IMAGE_V0281 is required" in resolver["run"]
+    assert "image=$HCU_CI_IMAGE_V0281" in resolver["run"]
+    assert (
+        "environment_lock=.github/workflows/configs/"
+        "hcu-runner-environment.json"
+    ) in resolver["run"]
     assert static["outputs"]["image"] == (
         "${{ steps.release-environment.outputs.image }}"
     )
@@ -160,9 +164,7 @@ def test_pr_ci_uses_immutable_event_shas_and_trusted_host_helpers() -> None:
 
     assert trusted_checkout["with"]["ref"] == base_sha
     assert head_checkout["with"]["ref"] == head_sha
-    assert "$RUNNER_TEMP/hcu-ci-scripts/resolve_hcu_ci_environment.py" in resolver[
-        "run"
-    ]
+    assert "resolve_hcu_ci_environment.py" not in resolver["run"]
     assert "$RUNNER_TEMP/hcu-ci-scripts/hcu_ci_run_control_container.sh" in verify[
         "run"
     ]
