@@ -151,6 +151,18 @@ def test_reusable_hardware_and_image_validation_never_fall_back_to_v0251() -> No
     assert "0.25.1-latest" not in json.dumps(validation)
 
 
+def test_image_validation_uses_python_from_the_published_image_path() -> None:
+    validation = _workflow("validate-docker-image.yml")
+    command = _named_step(
+        validation["jobs"]["validate"], "Validate published image"
+    )["run"]
+
+    assert "/usr/local/bin/python" not in command
+    assert "python3 --version" in command
+    assert "python3 .github/scripts/hcu_ci/hcu_ci_preflight.py" in command
+    assert "python3 tools/run_patch_tests.py" in command
+
+
 def test_nightly_and_patch_coverage_use_v0281_environment() -> None:
     nightly = _workflow("nightly-hcu.yml")
     patch_coverage = _workflow("patch-coverage.yml")
