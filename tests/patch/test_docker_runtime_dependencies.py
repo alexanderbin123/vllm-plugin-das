@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+from fnmatch import fnmatch
 from pathlib import Path
 
 from packaging.requirements import Requirement
@@ -13,6 +14,7 @@ INSTALLER = (
 )
 REQUIREMENTS = REPOSITORY_ROOT / "docker/requirements-vllm-runtime.txt"
 DOCKERFILE = REPOSITORY_ROOT / "docker/Dockerfile"
+DOCKERIGNORE = REPOSITORY_ROOT / ".dockerignore"
 
 
 def _recording_python(tmp_path: Path) -> tuple[Path, Path]:
@@ -161,3 +163,29 @@ def test_dockerfile_does_not_override_the_index_for_ray() -> None:
     ]
 
     assert not ray_instructions
+
+
+def _docker_context_excludes(relative_path: str) -> bool:
+    excluded = False
+    for raw_pattern in DOCKERIGNORE.read_text(encoding="utf-8").splitlines():
+        pattern = raw_pattern.strip()
+        if not pattern or pattern.startswith("#"):
+            continue
+        included = pattern.startswith("!")
+        if included:
+            pattern = pattern[1:]
+        pattern = pattern.lstrip("/").rstrip("/")
+        if (
+            relative_path == pattern
+            or relative_path.startswith(f"{pattern}/")
+            or fnmatch(relative_path, pattern)
+        ):
+            excluded = not included
+    return excluded
+
+
+def test_docker_runtime_artifacts_are_available_in_build_context() -> None:
+    assert not _docker_context_excludes("docker/requirements-vllm-runtime.txt")
+    assert not _docker_context_excludes(
+        "scripts/ci/hcu/install_vllm_runtime_dependencies.sh"
+    )
