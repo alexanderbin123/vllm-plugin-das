@@ -163,6 +163,18 @@ def test_image_validation_uses_python_from_the_published_image_path() -> None:
     assert "python3 tools/run_patch_tests.py" in command
 
 
+def test_image_validation_exposes_the_hcu_runtime_to_the_container() -> None:
+    validation = _workflow("validate-docker-image.yml")
+    command = _named_step(
+        validation["jobs"]["validate"], "Validate published image"
+    )["run"]
+
+    assert "--privileged" in command
+    assert "--device /dev/kfd:/dev/kfd" in command
+    assert "--device /dev/dri:/dev/dri" in command
+    assert "-v /opt/hyhal:/opt/hyhal:ro" in command
+
+
 def test_nightly_and_patch_coverage_use_v0281_environment() -> None:
     nightly = _workflow("nightly-hcu.yml")
     patch_coverage = _workflow("patch-coverage.yml")

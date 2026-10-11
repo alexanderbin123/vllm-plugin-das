@@ -137,8 +137,14 @@ jobs:
           DIGEST_IMAGE: ${{ steps.image.outputs.digest }}
         run: |
           docker run --rm \
+            --privileged \
+            --cap-add=SYS_PTRACE \
+            --device /dev/kfd:/dev/kfd \
+            --device /dev/dri:/dev/dri \
+            --ipc=host \
             --network=host \
             -v "$PWD:/vllm-plugin-das:ro" \
+            -v /opt/hyhal:/opt/hyhal:ro \
             -w /vllm-plugin-das \
             "$DIGEST_IMAGE" \
             bash -lc '
