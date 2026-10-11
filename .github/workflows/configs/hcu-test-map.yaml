@@ -55,7 +55,12 @@
       "arch": "gfx936",
       "cards": 1,
       "suite": "contract-hcu",
-      "pytest_args": [],
+      "pytest_args": [
+        "--deselect",
+        "tests/patch/test_base_linear_parameter.py::test_official_registry_stdin_protocol_applies_adapter_and_one_linear",
+        "--deselect",
+        "tests/patch/test_base_linear_parameter.py::test_qwen35_real_inspect_cache_miss_uses_official_registry_command"
+      ],
       "timeout_minutes": 45,
       "requirements": [],
       "partitions": 2

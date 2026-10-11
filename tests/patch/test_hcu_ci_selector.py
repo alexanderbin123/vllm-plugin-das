@@ -83,6 +83,22 @@ def test_selector_configuration_is_valid() -> None:
     assert "single-node-topology" in jobs
 
 
+def test_v0281_contract_job_deselects_v0251_only_bootstrap_tests() -> None:
+    pytest_args = _config()["jobs"]["contract-hcu-gfx936"]["pytest_args"]
+    assert pytest_args == [
+        "--deselect",
+        (
+            "tests/patch/test_base_linear_parameter.py::"
+            "test_official_registry_stdin_protocol_applies_adapter_and_one_linear"
+        ),
+        "--deselect",
+        (
+            "tests/patch/test_base_linear_parameter.py::"
+            "test_qwen35_real_inspect_cache_miss_uses_official_registry_command"
+        ),
+    ]
+
+
 def test_full_matrix_contains_every_enabled_registered_job() -> None:
     config = _config()
     matrix = build_matrix(config, profile="full")
