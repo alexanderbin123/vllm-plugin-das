@@ -765,6 +765,7 @@ def test_contiguous_deep_gemm_pairs_deepgemm_gemm_with_lightop_activation(
 def test_contiguous_deep_gemm_rejects_top_level_activation_and_grouped_gemm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setitem(sys.modules, "deepgemm", ModuleType("deepgemm"))
     legacy = ModuleType("lightop")
     legacy_calls: list[str] = []
     legacy.m_grouped_w8a8_gemm_nt_contig_asm = lambda *_args, **_kwargs: legacy_calls.append(
@@ -861,6 +862,7 @@ def test_masked_deep_gemm_pairs_deepgemm_gemm_with_lightop_activation(
 def test_masked_deep_gemm_rejects_top_level_activation_and_grouped_gemm(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setitem(sys.modules, "deepgemm", ModuleType("deepgemm"))
     legacy = ModuleType("lightop")
     legacy_calls: list[str] = []
     legacy.m_grouped_w8a8_gemm_nt_masked = lambda *_args, **_kwargs: legacy_calls.append(
