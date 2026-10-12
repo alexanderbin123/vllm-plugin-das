@@ -207,6 +207,18 @@ def test_reusable_hardware_and_image_validation_never_fall_back_to_v0251() -> No
     assert "0.25.1-latest" not in json.dumps(validation)
 
 
+def test_full_enabled_dispatch_falls_back_to_general_hcu_image() -> None:
+    full_enabled = _workflow("full-enabled-hcu.yml")
+    selected = _workflow("_selected-hcu-tests.yml")
+
+    assert full_enabled["jobs"]["hardware"]["with"]["image"] == (
+        "${{ inputs.image || vars.HCU_CI_IMAGE }}"
+    )
+    assert selected["jobs"]["resolve-image"]["env"]["SOURCE_IMAGE"] == (
+        "${{ inputs.image }}"
+    )
+
+
 def test_image_validation_uses_python_from_the_published_image_path() -> None:
     validation = _workflow("validate-docker-image.yml")
     command = _named_step(
