@@ -4,6 +4,8 @@
 
 """Dense feed-forward and fused MoE blocks for HY V4 on HCU."""
 
+import os
+
 import torch
 from torch import nn
 from transformers import PretrainedConfig
@@ -20,8 +22,28 @@ from vllm.model_executor.layers.linear import (
 from vllm.model_executor.layers.quantization import QuantizationConfig
 
 from vllm_hcu.patch.config import get_hcu_config
+from vllm_hcu.model_executor.layers.attention.pcp import in_replicated_mtp_batch
 
 logger = init_logger(__name__)
+
+_HYV4_MOE_CHUNK_SIZE_ENV = "VLLM_HCU_HYV4_MOE_CHUNK_SIZE"
+
+
+def _hyv4_moe_chunk_size() -> int | None:
+    raw = os.environ.get(_HYV4_MOE_CHUNK_SIZE_ENV)
+    if raw is None or not raw.strip():
+        return None
+    try:
+        size = int(raw)
+    except ValueError as exc:
+        raise ValueError(
+            f"{_HYV4_MOE_CHUNK_SIZE_ENV} must be a positive integer; got {raw!r}."
+        ) from exc
+    if size <= 0:
+        raise ValueError(
+            f"{_HYV4_MOE_CHUNK_SIZE_ENV} must be a positive integer; got {size}."
+        )
+    return size
 
 
 def validate_hyv4_offline_eplb_mode(
@@ -251,10 +273,25 @@ class HYV4MoEFused(nn.Module):
         hidden_states = hidden_states.view(-1, hidden_states.shape[-1])
         # The runner owns the gate and computes logits after shared-expert
         # stream synchronization, before dispatch. Do not project twice.
-        final_hidden_states = self.experts(
-            hidden_states=hidden_states,
-            router_logits=None,
-        )
+        # All PCP ranks restore the same global MTP batch and chunk order.
+        chunk_size = _hyv4_moe_chunk_size()
+        if (
+            chunk_size is None
+            or not in_replicated_mtp_batch()
+            or hidden_states.shape[0] <= chunk_size
+        ):
+            final_hidden_states = self.experts(
+                hidden_states=hidden_states,
+                router_logits=None,
+            )
+        else:
+            final_hidden_states = torch.empty_like(hidden_states)
+            for start in range(0, hidden_states.shape[0], chunk_size):
+                end = min(start + chunk_size, hidden_states.shape[0])
+                final_hidden_states[start:end] = self.experts(
+                    hidden_states=hidden_states[start:end],
+                    router_logits=None,
+                )
         return final_hidden_states.view(original_shape)
 
 
