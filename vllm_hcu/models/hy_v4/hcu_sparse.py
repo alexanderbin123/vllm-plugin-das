@@ -167,6 +167,7 @@ class HYV4FlashMLASparseImpl(FlashMLASparseImpl):
         sinks: torch.Tensor | None = mla_args.pop("sinks", None)
         self._lightop_kv_reuse_state = lightop_kv_reuse_state
         self._is_indexer_producer = indexer is not None
+        self._reuse_sparse_indices = henvs.VLLM_HCU_HYV4_REUSE_SPARSE_INDICES
         super().__init__(
             num_heads,
             head_size,
@@ -337,6 +338,76 @@ class HYV4FlashMLASparseImpl(FlashMLASparseImpl):
             out = out[:, :, :actual_num_heads, :]
 
         return out, lse
+
+    def _forward_fp8_kv_separate_prefill_decode(
+        self,
+        q: torch.Tensor,
+        kv_c_and_k_pe_cache: torch.Tensor,
+        topk_indices: torch.Tensor,
+        attn_metadata: FlashMLASparseMetadata,
+    ) -> torch.Tensor:
+        if not getattr(self, "_reuse_sparse_indices", False):
+            return super()._forward_fp8_kv_separate_prefill_decode(
+                q, kv_c_and_k_pe_cache, topk_indices, attn_metadata
+            )
+
+        from vllm import _custom_ops as ops
+        from vllm.v1.attention.backends.utils import (
+            reshape_attn_output_for_spec_decode,
+            reshape_query_for_spec_decode,
+        )
+        from vllm_hcu.models.hy_v4.sparse_index import convert_indices_and_counts
+
+        fp8_metadata = attn_metadata.fp8_extra_metadata
+        assert isinstance(fp8_metadata, FlashMLASparseMetadata.FP8SeparatePrefillDecode)
+        num_decodes = fp8_metadata.num_decodes
+        # Keep the inherited separate-prefill/decode computation below. Only
+        # its integer index conversion changes. With no sink, vendor decode
+        # can sort indices in place, so that case must not reuse a mapping.
+        topk_indices, topk_length = convert_indices_and_counts(
+            attn_metadata, topk_indices,
+            is_producer=self._is_indexer_producer,
+            mapping_is_read_only=self.sinks is not None,
+        )
+
+        def _fp8_decode(q, topk_indices):
+            q = reshape_query_for_spec_decode(q, num_decodes)
+            topk_indices = topk_indices.view(num_decodes, q.shape[1], -1)
+            assert fp8_metadata.decode is not None
+            output, _ = self._fp8_flash_mla_kernel(
+                q=q,
+                kv_c_and_k_pe_cache=kv_c_and_k_pe_cache,
+                topk_indices=topk_indices,
+                kernel_metadata=fp8_metadata.decode.kernel_metadata,
+            )
+            return reshape_attn_output_for_spec_decode(output)
+
+        num_decode_tokens = fp8_metadata.num_decode_tokens
+        num_prefill_tokens = fp8_metadata.num_prefill_tokens
+        if num_decode_tokens > 0 and num_prefill_tokens == 0:
+            assert fp8_metadata.decode is not None
+            return _fp8_decode(q, topk_indices)
+
+        output = q.new_empty(
+            (attn_metadata.num_actual_tokens, self.num_heads, self.kv_lora_rank),
+            dtype=q.dtype, device=q.device,
+        )
+        if num_decode_tokens > 0:
+            output[:num_decode_tokens] = _fp8_decode(
+                q[:num_decode_tokens], topk_indices[:num_decode_tokens]
+            )
+        assert fp8_metadata.prefill is not None
+        for chunk in fp8_metadata.prefill.chunks:
+            workspace = self.prefill_bf16_workspace[: chunk.chunk_tot_seqlen]
+            ops.cp_gather_and_upconvert_fp8_kv_cache(
+                kv_c_and_k_pe_cache, workspace, chunk.block_table,
+                chunk.seq_lens, chunk.workspace_starts, len(chunk.block_table),
+            )
+            output[chunk.tokens_slice] = self._bf16_flash_mla_kernel(
+                q[chunk.tokens_slice], workspace,
+                topk_indices[chunk.tokens_slice], topk_length[chunk.tokens_slice],
+            )
+        return output
 
     def _forward_fp8_kv_mixed_batch(
         self,
