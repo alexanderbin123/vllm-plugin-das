@@ -162,6 +162,11 @@ HIP_VISIBLE_DEVICES=0 \
 `/v1/chat/completions` 均返回 HTTP 200，固定请求返回 `42`。详细命令和边界见
 [`docs/validation/vllm032-adapter-das-qwen3-8b-smoke.md`](../validation/vllm032-adapter-das-qwen3-8b-smoke.md)。
 
+合入后的 Plugin 基线还完成了 Qwen2 BF16、Qwen3 14B BF16、Qwen3-VL 图文请求和
+Qwen3 Channel INT8 W8A8 共四个新增服务 smoke；四项均完成非 eager Graph 启动、
+HTTP 200 和确定性生成，详见
+[`docs/validation/vllm032-adapter-das-multimodel-smoke.md`](../validation/vllm032-adapter-das-multimodel-smoke.md)。
+
 ## 9. 回滚
 
 ```bash
