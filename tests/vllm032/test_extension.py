@@ -15,7 +15,7 @@ PLUGIN_SOURCE_ROOT = (
 )
 sys.path.insert(0, os.fspath(PLUGIN_SOURCE_ROOT))
 
-from hcu_vllm_adapter.extensions import ExtensionContext, ExtensionSpec
+from hcu_adapter.extensions import ExtensionContext, ExtensionSpec
 from hcu_vllm_das import extension
 
 
@@ -77,9 +77,9 @@ def test_factory_does_not_claim_a_future_adapter_api() -> None:
 import sys
 from types import ModuleType
 
-adapter = ModuleType("hcu_vllm_adapter")
+adapter = ModuleType("hcu_adapter")
 adapter.__path__ = []
-extensions = ModuleType("hcu_vllm_adapter.extensions")
+extensions = ModuleType("hcu_adapter.extensions")
 extensions.EXTENSION_API_VERSION = 2
 extensions.ExtensionContext = object
 
@@ -92,8 +92,8 @@ class ExtensionSpec:
         self.activate = activate
 
 extensions.ExtensionSpec = ExtensionSpec
-sys.modules["hcu_vllm_adapter"] = adapter
-sys.modules["hcu_vllm_adapter.extensions"] = extensions
+sys.modules["hcu_adapter"] = adapter
+sys.modules["hcu_adapter.extensions"] = extensions
 sys.path.insert(0, {os.fspath(PLUGIN_SOURCE_ROOT)!r})
 
 from hcu_vllm_das.extension import extension_spec
@@ -113,11 +113,13 @@ def test_discovery_and_factory_import_no_runtime_frameworks() -> None:
     code = f"""
 import sys
 sys.path.insert(0, {os.fspath(PLUGIN_SOURCE_ROOT)!r})
+blocked = {{"torch", "vllm", "lightop", "vllm_hcu"}}
+before = set(sys.modules)
 from hcu_vllm_das.extension import extension_spec
 spec = extension_spec()
 assert spec.name == "das-hcu"
-blocked = {{"torch", "vllm", "lightop", "vllm_hcu"}}
-assert blocked.isdisjoint(sys.modules), blocked.intersection(sys.modules)
+introduced = (set(sys.modules) - before).intersection(blocked)
+assert not introduced, introduced
 """
     result = subprocess.run(
         [sys.executable, "-c", code],
