@@ -31,8 +31,8 @@ def test_plugin_compat_lock_pins_vllm032_pair_without_circular_commits() -> None
     assert document["repository"] == {
         "name": "vllm-plugin-das",
         "url": "https://github.com/alexanderbin123/vllm-plugin-das.git",
-        "branch": "feat/adapter-das-extension-api",
-        "source_base": "1be8d694edff552eebe8b3b9a9c3b2e44235d486",
+        "branch": "compat/vllm-v0.32.0",
+        "source_base": "cb7851f5b7222892f9188e8f1ceb8be0bacfa6f8",
         "test_policy_commit": "af84424cf652893fbbf392f9e1759ff19241ff96",
     }
     assert document["peer"] == {
