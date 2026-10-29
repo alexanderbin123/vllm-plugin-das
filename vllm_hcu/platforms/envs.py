@@ -51,6 +51,7 @@ if TYPE_CHECKING:
     VLLM_HCU_DEEPSEEK_V4_ROCM_FLASHMLA_DECODE: bool = True
     VLLM_HCU_DEEPSEEK_V4_ROCM_FLASHMLA_PREFILL: bool = True
     VLLM_HCU_HYV4_FP8_KV_DEQUANT: bool = False
+    VLLM_HCU_HYV4_REUSE_SPARSE_INDICES: bool = False
     VLLM_HCU_ENABLE_HYV4_GATE_A2A_OVERLAP: bool = False
     VLLM_HCU_ENABLE_HYV4_ATTN_INPUT_OVERLAP: bool = False
     VLLM_HCU_DEEPSEEK_V4_ROCM_FAST_WOA: bool = True
@@ -362,6 +363,12 @@ hcu_vllm_environment_variables: dict[str, Callable[[], Any]] = {
     "VLLM_HCU_HYV4_FP8_KV_DEQUANT":
         lambda: (os.environ.get("VLLM_HCU_HYV4_FP8_KV_DEQUANT", "False").lower() in
                     ("true", "1")),
+
+    # Fuse HY V4 sparse index/count conversion and reuse eager IndexShare maps.
+    "VLLM_HCU_HYV4_REUSE_SPARSE_INDICES":
+        lambda: (os.environ.get(
+            "VLLM_HCU_HYV4_REUSE_SPARSE_INDICES", "False"
+        ).lower() in ("true", "1")),
 
     # Overlap HY V4 gated-MLA g_proj with DCP A2A only.
     "VLLM_HCU_ENABLE_HYV4_GATE_A2A_OVERLAP":
