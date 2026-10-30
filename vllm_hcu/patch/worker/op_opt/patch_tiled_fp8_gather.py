@@ -22,6 +22,9 @@ TARGETS = (f"{TARGET_MODULE}.cp_gather_and_upconvert_fp8_kv_cache",)
 _MARKER = "_hcu_tiled_fp8_gather_patch_applied"
 _WRAPPER_MARKER = "_hcu_tiled_fp8_gather_wrapper"
 _enabled = False
+# Eager native dispatch wins for a single request on gfx938. Keep unmeasured
+# 2/3-request batches native too; the tested tiled crossover starts at four.
+_MIN_TILED_REQUESTS = 4
 
 
 def _field(config: object, name: str, default=None):
@@ -58,7 +61,9 @@ def make_dispatch(original):
                  batch_size):
         arguments = (src_cache, dst, block_table, seq_lens,
                      workspace_starts, batch_size)
-        if (_enabled and henvs.VLLM_HCU_USE_CUSTOM_OPS
+        if (_enabled and type(batch_size) is int
+                and batch_size >= _MIN_TILED_REQUESTS
+                and henvs.VLLM_HCU_USE_CUSTOM_OPS
                 and henvs.VLLM_HCU_USE_TILED_KV_GATHER):
             from vllm_hcu.ops.tiled_fp8_gather import (
                 cp_gather_and_upconvert_fp8_kv_cache_tiled,

@@ -1,9 +1,9 @@
 # Experimental tiled FP8 gather for the P worker
 
 This draft adapts the SGLang paged tiled dequantization loop to vLLM's
-`cp_gather_and_upconvert_fp8_kv_cache` interface. It has **not been tested on
-hardware or validated for numerical accuracy or performance**. Existing
-deployments keep the native implementation unless explicitly opted in.
+`cp_gather_and_upconvert_fp8_kv_cache` interface. Initial gfx938 operator checks
+match native/reference values, but **model accuracy and end-to-end performance
+remain unvalidated**. Existing deployments keep native unless opted in.
 
 ## Activation and scope
 
@@ -26,6 +26,9 @@ Eligible calls have a contiguous packed 656-byte FP8 E4M3FN cache
 workspace, and same-device int32 metadata. Other layouts call the saved native
 function. This changes neither the D worker nor the indexer's TopK selection.
 It gathers all valid KV rows described by the current prefill chunk.
+Calls with fewer than four requests retain native dispatch: the initial gfx938
+eager measurements showed a single-request regression and gains at 4/8/12
+requests. The 2/3-request region is conservatively kept native as well.
 
 ## Mapping and expected tradeoffs
 
@@ -59,5 +62,11 @@ SGLang's flattened-slot preprocessing.
   workload, including prefix-cache hits, workspace splitting, TTFT, RPS and
   complete indexing/gather overhead. Capture traces only in a separate run.
 
-The current change has only syntax, whitespace and manual static review checks;
-unit, GPU, model and performance tests are intentionally deferred.
+Initial operator validation covers native/reference bit patterns, tail tiles,
+zero/mixed lengths, output gaps, 3D/4D cache layouts, changed device metadata,
+and dispatch/lifecycle behavior. NoPE and RoPE (including special BF16 bit
+patterns) match. Preliminary eager measurements at 85000-token context show
+about 1.32x/1.40x/1.46x at 4/8/12 requests, while one request regresses without
+the small-batch fallback. These are operator-level results, not P/D capacity or
+model-accuracy results. Unit timing scripts and full results accompany the
+benchmark artifacts; the small-batch routing regression is checked in.
