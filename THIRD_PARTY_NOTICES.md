@@ -69,6 +69,15 @@ are retained in the corresponding local files.
 
 ## Additional Notes
 
+- `vllm_hcu/ops/tiled_fp8_gather.py` adapts the tiled dequantization loop from
+  `maxiaobetter/sglang-das`, commit
+  `e37bbf150d2d5c3288fd18ed0ee757bcb8f6979a`,
+  `python/sglang/kernels/ops/attention/dsa/dequant_k_cache.py`
+  (`_dequantize_k_cache_paged_tiled_kernel`, Apache-2.0;
+  Copyright 2023-2024 SGLang Team). HYGON changes replace flattened slots with
+  a request-by-token-tile grid, read vLLM's exact device lengths/offsets and
+  write into the caller's workspace. Original project attribution is retained.
+
 - `vllm_hcu/v1/attention/ops/prefill_mqa.py` adapts the contiguous request
   grouping cost model from `maxiaobetter/sglang-das`, commit
   `d50074e6a6942df5c91da0076acf273c977738cc`,
