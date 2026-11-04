@@ -244,6 +244,7 @@ _OP_CALLBACKS: tuple[_CallbackSpec, ...] = (
     _CallbackSpec(_adapter("op_opt", "patch_mla_layer"), feature="lightly_cp"),
     _CallbackSpec(_adapter("op_opt", "patch_mla_indexer")),
     _CallbackSpec(_adapter("op_opt", "patch_flashmla_sparse")),
+    _CallbackSpec(_adapter("op_opt", "patch_tiled_fp8_gather")),
     _CallbackSpec(_adapter("op_opt", "patch_fla_chunk_delta_h")),
     _CallbackSpec(_adapter("op_opt", "patch_fla_chunk_o")),
     _CallbackSpec(_adapter("op_opt", "patch_mamba_mixer")),
@@ -827,6 +828,9 @@ def apply_worker_patches(vllm_config: object | None = None) -> None:
                     "deserialized worker sidecar"
                 )
 
+        from vllm_hcu.patch.worker.op_opt import patch_tiled_fp8_gather
+
+        patch_tiled_fp8_gather.bind_runtime_config(vllm_config)
         prepare_worker_patches()
         states = _feature_states(vllm_config, config)
         for patch_id, feature in _patch_features().items():
