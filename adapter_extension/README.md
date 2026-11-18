@@ -20,9 +20,30 @@ It also provides an explicit HCU FlashAttention backend selected by
 `--attention-backend FLASH_ATTN`. The backend keeps vLLM's official metadata,
 scheduler and allocation. Its public `AttentionImpl` owns the HCU provider call
 and dense HND/NHD cache views, routes BF16 writes to the native vLLM writer,
-and retains a Plugin E5M2 writer and descale adapter. The kernel page is 64
+and retains a Plugin E5M2 writer and descale adapter. E4M3 (`fp8` or
+`fp8_e4m3`) uses Core's native writer and byte gather, then dequantizes the
+gathered KV workspace for the vendor BF16/FP16 Flash call. The kernel page is 64
 tokens. It neither copies nor replaces the official Flash forward method and
 does not require private HCU hooks in the Core.
+
+E4M3 preserves the platform's actual `float8_e4m3fn`/`float8_e4m3fnuz`
+encoding, unquantized queries, layer K/V scales, prefix block tables and
+Graph replay. The persistent KV cache remains one byte per element. The
+temporary gather/dequantization workspace scales with
+`batch_size * max_seqlen_k * KV_heads * head_size`; it adds memory and copy
+overhead and is not a native E4M3 Flash-kernel performance claim. D192 uses
+zero-extended D256 queries/KV with the original attention scale to avoid the
+installed vendor's incomplete D192 Graph output. Per-head/per-sequence scales
+remain outside the backend's advertised support.
+
+```bash
+vllm serve /model/Qwen2-0.5B-Instruct \
+  --attention-backend FLASH_ATTN --block-size 64 \
+  --kv-cache-dtype fp8_e4m3
+```
+
+Qualification is scoped to the device/checkpoint and actual test reports;
+accepting the dtype does not establish model accuracy or performance.
 
 ## E2M1 packer lowering (default triton, `stock` opts out)
 

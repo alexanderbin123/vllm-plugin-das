@@ -66,6 +66,9 @@ backings, device copies and model acceptance separate from this CPU coverage.
 
 ## Run a static preflight
 
+For Flash FP8 KV selection or dtype migration, read
+[the full writer/reader and Graph contract](references/flash-fp8-kv.md).
+
 The companion script reads committed trees without checking out refs,
 fetching missing objects, importing repository code or using a device.
 It requires Python 3.10+. Git supporting `--no-lazy-fetch` can inspect partial

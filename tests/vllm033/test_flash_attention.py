@@ -266,7 +266,7 @@ def test_forward_rejects_fused_output_quantization(monkeypatch, argument):
         {"attn_type": "encoder"},
         {"sliding_window": 128},
         {"sinks": torch.empty(4)},
-        {"kv_cache_dtype": "fp8_e4m3"},
+        {"kv_cache_dtype": "fp8_ds_mla"},
         {"head_size": 96},
         {"num_kv_heads": 3},
     ),
@@ -473,6 +473,8 @@ def test_backend_selects_fa2_dual_layout_and_64_token_pages(monkeypatch):
         "auto",
         "float16",
         "bfloat16",
+        "fp8",
+        "fp8_e4m3",
         "fp8_e5m2",
     ]
     assert flash.HcuFlashAttentionBackend.supports_dcp() is False
