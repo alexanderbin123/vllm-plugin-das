@@ -159,3 +159,10 @@ loader. The original 63-case result above remains its original source-only scope
 current source/wheel/installed checks must be recorded against the follow-up SHA
 before claiming their outcome. HCU, model, HumanEval and performance gates remain
 open.
+
+
+The HY4 CT descriptor must follow the Adapter's CT registration (priority 105).
+The public loader runs higher priorities first, so the dependent HY4 check uses
+priority 104. A loader regression retains the actual descriptor priorities and
+reverses discovery order. Validate the paired installed registry separately; this
+ordering correction does not establish native CT execution or model acceptance.

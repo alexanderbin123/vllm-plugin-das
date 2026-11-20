@@ -97,3 +97,36 @@ def test_real_hy4_config_delegates_without_claiming_other_models(monkeypatch):
             cls().get_quant_method('layer', 'other')
     finally:
         sys.modules.pop(name, None)
+
+
+def test_hy4_activation_follows_the_adapter_ct_registration(monkeypatch):
+    """Use the real loader and descriptor priorities; publication is a double."""
+    from dataclasses import replace
+    import importlib
+    from hcu_adapter.extensions import ExtensionContext, ExtensionStatus, activate_extensions
+    from hcu_vllm_das.adapter_api import adapter_module
+
+    provider = importlib.reload(importlib.import_module('hcu_vllm_das.hy4_quant_activation'))
+    ct = adapter_module('ct_w4a8_registration')
+    events = []
+    primary = replace(ct.extension_spec(),
+                      activate=lambda context: events.append('ct-published'),
+                      check_health=None)
+    monkeypatch.setattr(provider, 'adapter_module', lambda name: SimpleNamespace(
+        set_additional_config_provider=lambda name, factory: None))
+
+    def require_publication():
+        assert events == ['ct-published']
+        events.append('hy4-checked')
+
+    monkeypatch.setattr(provider, 'check_health', require_publication)
+    points = [
+        SimpleNamespace(name='das_hcu_hy4_ct_w4a8', load=lambda: provider.extension_spec),
+        SimpleNamespace(name='das_hcu_ct_w4a8', load=lambda: lambda: primary),
+    ]
+    context = ExtensionContext('0.5.22', '0.33.0',
+                               requested_capabilities={'hy4-ct-w4a8'})
+    reports = activate_extensions(context, entry_points=points)
+    assert len(reports) == 2
+    assert all(report.status is ExtensionStatus.ACTIVE for report in reports)
+    assert events == ['ct-published', 'hy4-checked']
