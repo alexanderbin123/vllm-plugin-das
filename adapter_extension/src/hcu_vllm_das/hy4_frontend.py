@@ -43,6 +43,10 @@ def check_health():
 def activate(context):
     """Called after the Adapter's version/platform/runtime admission."""
     global _state
+    required = (
+        'das_hcu_hy4_frontend' in context.requested_extensions
+        or 'bytelevel-prompt-tail' in context.requested_capabilities
+    )
     if _state is not None:
         try:
             valid = _mode() == _state[1] and _owns_publication()
@@ -50,13 +54,13 @@ def activate(context):
             raise ExtensionCommitError("ByteLevel published state unavailable") from error
         if not valid:
             raise ExtensionCommitError("ByteLevel published policy/owner changed; restart")
+        # A later required activation must not borrow the earlier optional OFF
+        # report. Policy/owner drift above keeps its existing fatal semantics.
+        if required and not _state[1]:
+            raise ValueError(f'ByteLevel provider requires {_FLAG}=1')
         _state = (os.getpid(), *_state[1:])
         return
     mode = _mode()
-    required = (
-        'das_hcu_hy4_frontend' in context.requested_extensions
-        or 'bytelevel-prompt-tail' in context.requested_capabilities
-    )
     if required and not mode:
         raise ValueError(f'ByteLevel provider requires {_FLAG}=1')
     if not mode:

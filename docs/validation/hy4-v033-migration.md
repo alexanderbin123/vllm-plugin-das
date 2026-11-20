@@ -147,3 +147,15 @@ offline-R16 model binding or establish native HIPC/DeepEP ABI acceptance.
 
 Current stage is source migration and CPU checks only, as requested. No machines
 were reserved and no service/container installation was changed in this stage.
+
+
+## Required activation and packaging follow-up
+
+Revalidate explicit entry-point/capability requirements even after an earlier
+optional disabled activation; keep policy/owner drift fatal. The exact source and
+wheel entry-point expectations include `das_hcu_hy4_frontend` and `das_hcu_hy4_ct_w4a8`. Regression covers
+both requirement forms on first and repeated activation through the actual Adapter
+loader. The original 63-case result above remains its original source-only scope;
+current source/wheel/installed checks must be recorded against the follow-up SHA
+before claiming their outcome. HCU, model, HumanEval and performance gates remain
+open.
