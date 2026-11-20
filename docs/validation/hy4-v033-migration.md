@@ -223,3 +223,22 @@ The initial stage used source/CPU checks. Later authorized component validation
 built an isolated Python3.12/DTK2610 stack in a dedicated POD1_CN2 container;
 Core source remains unchanged. Both nodes became occupied by other workloads
 before full-model validation. No other containers or GPU jobs were stopped.
+
+
+## Required activation and packaging follow-up
+
+Revalidate explicit entry-point/capability requirements even after an earlier
+optional disabled activation; keep policy/owner drift fatal. The exact source and
+wheel entry-point expectations include `das_hcu_hy4_frontend` and `das_hcu_hy4_ct_w4a8`. Regression covers
+both requirement forms on first and repeated activation through the actual Adapter
+loader. The original 63-case result above remains its original source-only scope;
+current source/wheel/installed checks must be recorded against the follow-up SHA
+before claiming their outcome. HCU, model, HumanEval and performance gates remain
+open.
+
+
+The HY4 CT descriptor must follow the Adapter's CT registration (priority 105).
+The public loader runs higher priorities first, so the dependent HY4 check uses
+priority 104. A loader regression retains the actual descriptor priorities and
+reverses discovery order. Validate the paired installed registry separately; this
+ordering correction does not establish native CT execution or model acceptance.

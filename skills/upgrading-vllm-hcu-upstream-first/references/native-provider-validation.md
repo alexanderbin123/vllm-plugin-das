@@ -171,3 +171,24 @@ retain exact eager and changed-input Graph assertions, and cover both position
 index dtypes. This component result does not qualify a model or other builds.
 PCP forward Q shares the native layout but requires separate FP32 products;
 validate both users together rather than changing the shared rounding globally.
+
+
+## Optional frontend providers and later requirements
+
+An optional OFF activation must not satisfy a later explicitly requested entry
+point or capability. Recheck requirement-specific eligibility on every activation,
+including the already-activated branch; preserve published policy/owner drift as
+commit-fatal. Exercise both first activation and optional-OFF followed by required
+activation through the real Adapter loader. Keep frontend/Core import guards and
+default-off behavior. Adding a production entry point also updates the single
+exact packaging table, checked against both source metadata and the actual wheel;
+do not weaken it to a subset check. These CPU contracts do not prove frontend
+process reachability, model output or serving performance.
+
+
+For dependent extensions, verify the actual public loader's priority direction.
+The Adapter loader orders higher priorities first: a provider that only checks an
+Adapter-owned registration must run after that registration. Exercise the real
+loader and actual descriptor priorities with reversed entry-point discovery order,
+then check the installed Core public registry with the paired Adapter/Plugin.
+A source-only provider delegation test cannot establish registration reachability.

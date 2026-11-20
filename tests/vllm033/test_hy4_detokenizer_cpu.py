@@ -214,3 +214,27 @@ def test_target_033_real_constructor_and_stop_updates(prefix, stop, minimum, inc
         assert candidate.output_token_ids == baseline.output_token_ids
         assert candidate.get_next_output_text(False, True) == baseline.get_next_output_text(False, True)
     assert candidate.get_next_output_text(True, False) == baseline.get_next_output_text(True, False)
+
+
+@pytest.mark.parametrize('required_kind', ['entry_point', 'capability'])
+@pytest.mark.parametrize('preactivate', [False, True])
+def test_disabled_provider_refuses_required_on_every_activation(
+        monkeypatch, required_kind, preactivate):
+    import importlib
+    from hcu_adapter.extensions import (
+        ExtensionContext, RequiredExtensionError, activate_extensions,
+    )
+    extension = importlib.reload(importlib.import_module('hcu_vllm_das.hy4_frontend'))
+    monkeypatch.setenv('VLLM_HCU_ENABLE_BYTELEVEL_DETOKENIZER_TAIL', '0')
+    monkeypatch.setattr(extension, 'import_module', lambda name: pytest.fail(name))
+    if preactivate:
+        extension.activate(ExtensionContext('0.5.22', '0.33.0'))
+        extension.check_health()
+    requirements = ({'requested_extensions': {'das_hcu_hy4_frontend'}}
+                    if required_kind == 'entry_point'
+                    else {'requested_capabilities': {'bytelevel-prompt-tail'}})
+    context = ExtensionContext('0.5.22', '0.33.0', **requirements)
+    point = SimpleNamespace(name='das_hcu_hy4_frontend',
+                            load=lambda: extension.extension_spec)
+    with pytest.raises(RequiredExtensionError):
+        activate_extensions(context, entry_points=[point])
