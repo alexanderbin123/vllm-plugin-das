@@ -192,3 +192,26 @@ Adapter-owned registration must run after that registration. Exercise the real
 loader and actual descriptor priorities with reversed entry-point discovery order,
 then check the installed Core public registry with the paired Adapter/Plugin.
 A source-only provider delegation test cannot establish registration reachability.
+
+## HY4 target and draft static composition on v0.33
+
+Use the [HY4 migration ledger](../../../docs/validation/hy4-v033-migration.md)
+for the current deployment scope and remaining model gates. Require both
+`hy4-ct-w4a8` and `hy4-static-eplb`; the static owner follows the Adapter CT
+registration and its HY4 health descriptor. Check the real installed loader,
+quantization registry and target/MTP model registry together, preserving the
+official quantization classes and foreign owners.
+
+Retain Core's decorated constructors and forward methods when substituting
+child factories. Request physical expert capacity before allocation; validate
+logical-to-physical fan-out and routing for both backbone and natural MTP.
+The separate legacy version-2 cookbook reader does not invent checkpoint or
+calibration provenance absent from that artifact. Verify both native model
+keys, declared counts, placement shape and cross-rank fingerprint; keep the
+existing stricter V41 map parser independent.
+
+A GPU-hidden ABI check cannot qualify the enabled host. For actual startup,
+retain the Adapter platform/general entry point and the deployment's verified
+DTK roots: a CPU `VLLM_PLUGINS=none` setting disables the platform owner too.
+Registration and CPU constructor/loader checks still do not establish PCP16
+execution, full-model Graph, checkpoint accuracy, raw HumanEval or performance.
