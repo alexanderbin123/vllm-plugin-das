@@ -215,3 +215,33 @@ retain the Adapter platform/general entry point and the deployment's verified
 DTK roots: a CPU `VLLM_PLUGINS=none` setting disables the platform owner too.
 Registration and CPU constructor/loader checks still do not establish PCP16
 execution, full-model Graph, checkpoint accuracy, raw HumanEval or performance.
+
+
+For HY4 CT checkpoints, keep logical expert keys in the native mapping when the
+static loader already performs replica fan-out; physical allocation and routing
+still retain redundant slots. A symmetric channel-INT8 indexer WK may reuse the
+native WK/scale pairing, scaled dequantization and fused shard loader. Cover both
+arrival orders and target/MTP loaders, reject unsupported zero points, and check
+that native loader bodies and module globals remain intact. Ordinary explicitly
+required CT admission and static CT composition have separate registry owners;
+test both through the real extension loader.
+
+Sparse MLA configuration may reach backend selection before MLAAttention's cache
+canonicalization. If that call order applies to the frozen Core, reuse its helper
+for the selected sparse backend after provider admission; do not broaden dtype
+capability tables or convert unrelated backends. Persistent conversion tables can
+reuse Core's decode-row bound while larger prefills use its temporary fallback.
+For PCP memory profiling, validate any local token bound against actual Core
+partitioning and preserve the scheduler budget and non-profile runner behavior.
+Kernel/CPU registration evidence does not establish full-checkpoint PCP memory,
+throughput, accepted MTP tokens or original HumanEval accuracy.
+
+
+Native compilation can invoke Python console tools through PATH; the parent's
+`-I` does not isolate their shebang interpreter. A recursively starting
+`ninja --version` helper that loads global Torch/HIP is a setup failure, not a
+kernel result. Preserve the original process tree and stop only its verified
+owned group. Select a tool from the isolated prefix, or the same installed
+package's native executable, recording its identity; do not rewrite the shared
+wrapper or framework/vendor files. Re-run the original unfinished tests with
+unchanged shapes, tolerances and Graph paths after all prior children terminate.
