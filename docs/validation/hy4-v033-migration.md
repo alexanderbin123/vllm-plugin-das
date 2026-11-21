@@ -1,5 +1,49 @@
 # HY4 v0.25.1 → v0.33.0
 
+## Installed current-owner combination (2026-11-21 UTC)
+
+Plugin production from reviewed repair `84fd592cedef4d9584d5382b8584b35ca8b9b259`
+was built as a real `0.33.0` wheel and installed outside checkout paths. The
+Adapter host is a new official host-project development build from a local
+incremental merge of PR153 `5dea18f0` and main `9c20b33d`; its complete source
+tree is `8c86dae88e56bf34c94a0729e8e0beff5dd498d3` (926 files), retaining the
+earlier documented bridge/docs conflict resolutions. This is not the exact
+remote Adapter head, CI run or a newly paired native release. All 44 native
+inputs match the existing `9fb7acb` build, whose kernel artifact is reused
+without changing its version/stamp.
+
+| New wheel | SHA256 |
+| --- | --- |
+| `hcu_adapter-0.5.22+hcu.1-py3-none-any.whl` | `e92173a0d0972d09e75a3ea68889c7b2d2cad26acfb7eab02f3a4102007a82ba` |
+| `hcu_vllm_das_plugin-0.33.0-py3-none-any.whl` | `5b5e05c32b852cf880b5d4ea47931828802c4f8c84c0e5e07ef132f54011b257` |
+
+Source/wheel/installation match 331 Adapter and 126 Plugin payloads. Eight
+actual distribution owners' complete raw RECORDs, 25886 hashed entries, match
+before and after validation. L0 and both skills pass. Six affected installed
+CPU files pass **128 tests**, zero failure/error/skip: Plugin workspace24,
+static-model4, PCP-MTP15, frontend67 and Adapter query-workspace9+9. No
+PYTHONPATH or runtime source overlay is used; runtime origins and the original
+Plugin installed-ownership guard are checked. The original explicit CPU
+boundary doubles remain, including bounded ROCm import metadata only.
+
+A separate actual gfx936 process passes full host admission, both required
+CT/static-EPLB capabilities, public model/quantization registries, repeated
+runtime health and official platform/cache-builder composition. It also imports
+the delivered Plugin workspace builder and confirms the same Adapter impl and
+the current private Core query-capacity constructor binding. Natural exit0,
+56.04 seconds total, Torch peak allocated/reserved0; no model is constructed.
+The existing HIP-runtime/AITER-JIT warning is retained in raw output. The
+unchanged 512MiB process cap and shared-device reserve apply; this is a binding
+probe, not a native attention test or a model lifecycle/15s-shutdown pass.
+
+No full portable/host lane, current native numerical/Graph matrix, real
+collectives, original model E2E/HumanEval0–31, performance or gfx836 acceptance
+is granted. Earlier failed and skipped gates remain. Keep Draft.
+Evidence: `/data/models/goal-wheel-followup-20261121T1730Z/` (complete source and
+native seals, build/install/wheel bindings, raw JUnit/origins, host stages and
+before/after RECORDs). These added documents/skill instructions do not alter
+the tested runtime payloads. OpenAI Codex assistance; no independent approval.
+
 ## Review integration of current PCP candidate (2026-11-21 UTC)
 
 The upstream candidate `8aff32b538d0bc088e23bc0b10f60c887c702efe` was

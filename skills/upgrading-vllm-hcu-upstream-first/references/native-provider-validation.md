@@ -300,3 +300,15 @@ PyNCCL transport is available and enabled; retain the official group fallback
 otherwise. Do not create a second communicator during allocator-heavy profiling
 or replace Core's communicator globally. A transport double verifies dispatch
 and ordering only; real collective, draft acceptance and lifecycle remain gates.
+
+Before reusing an installed Adapter for a newer Plugin review, compare the
+actual Python production tree as well as native inputs. Unchanged native code
+does not mean the query-capacity constructor or metadata builder is unchanged.
+Compose the current owners, build the official host project in isolation and
+verify source/wheel/installed bytes, raw RECORDs and parent origins. Label an
+unstamped host-only development build separately from a newly paired native
+release; reuse an older kernel only with matching native inputs and actual ABI
+admission. Check that the Plugin builder retains Adapter's implementation and
+that Adapter's local query bound still preserves the official global KV bound.
+An import/binding check on a real HCU does not exercise native attention or a
+model, and it cannot clear an older whole-model shutdown failure.
