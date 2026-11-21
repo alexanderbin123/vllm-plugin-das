@@ -284,3 +284,19 @@ Model/EP doubles establish this component contract only, not a real collective
 or full-model Graph. Verify complete shared Core/Torch/Triton/provider RECORDs
 before and after; resolve each dist-info symlink to its actual owner before
 interpreting RECORD-relative paths, including console-script entries.
+
+For PCP prefill workspace coalescing, keep the policy on the owned model's
+metadata builder and retain Adapter's implementation, cache format and native
+forward. Merge only adjacent segments of one request; a request identity is not
+evidence of shared physical pages across different requests. Preserve the raw
+decode-row boundary when collective padding differs from active decode counts,
+and test request-to-query mapping, workspace capacity and unsupported-layout
+fallback against the actual Core builder. Default-off policy, invalid-input
+refusal and the existing kill switch need separate checks. CPU metadata oracles
+do not establish native numerical parity, Graph or model performance.
+
+For PCP MTP broadcasts, reuse Core's initialized device communicator when its
+PyNCCL transport is available and enabled; retain the official group fallback
+otherwise. Do not create a second communicator during allocator-heavy profiling
+or replace Core's communicator globally. A transport double verifies dispatch
+and ordering only; real collective, draft acceptance and lifecycle remain gates.
