@@ -245,3 +245,19 @@ owned group. Select a tool from the isolated prefix, or the same installed
 package's native executable, recording its identity; do not rewrite the shared
 wrapper or framework/vendor files. Re-run the original unfinished tests with
 unchanged shapes, tolerances and Graph paths after all prior children terminate.
+
+
+For PCP MTP, inspect the target's native proposal loop and synchronize each
+sample before the next draft input/KV write; broadcasting only the completed
+proposal is too late. Keep the native sampler, verification and request updates,
+and validate the public post-load seam on the actual installed Adapter pair.
+Sequential CPU group doubles establish ordering contracts, not a real collective
+or accepted-token accuracy. Retain real distributed and complete model gates.
+
+For a PCP Mooncake sender, retain the official bootstrap predicate's TP/PP/DP
+and external-server rules before narrowing to canonical PCP rank zero. Keep
+the public connector identifier and native scheduler/transport methods; replica
+completion must still flow through Core's world-size aggregator so cache is not
+freed before the real sender acknowledges. Constructor tests with transport and
+thread leaves doubled do not qualify real port ownership, failure cleanup,
+transfer bytes or P/D model lifecycle.
