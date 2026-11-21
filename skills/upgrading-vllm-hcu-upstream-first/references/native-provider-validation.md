@@ -261,3 +261,14 @@ completion must still flow through Core's world-size aggregator so cache is not
 freed before the real sender acknowledges. Constructor tests with transport and
 thread leaves doubled do not qualify real port ownership, failure cleanup,
 transfer bytes or P/D model lifecycle.
+
+
+Static EPLB placement and load recording are separate contracts. Disabling
+recording does not disable Core token-hash replica selection: retain the actual
+loaded replica counts for HY4, and let the official router use every published
+column. Rank-local nearest/locality ordering must preserve the replica set.
+Keep other model owners explicitly scoped to their existing primary-only policy.
+Regress target/MTP, rank and ordering policies, repeated publication identity,
+invalid expert IDs and changed inputs against the actual installed Core router.
+CPU hash emulation alone is insufficient; real kernel checks still do not prove
+Graph replay, real EP collectives, full-checkpoint accuracy or throughput.
