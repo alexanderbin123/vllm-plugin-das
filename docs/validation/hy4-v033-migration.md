@@ -386,3 +386,23 @@ The public loader runs higher priorities first, so the dependent HY4 check uses
 priority 104. A loader regression retains the actual descriptor priorities and
 reverses discovery order. Validate the paired installed registry separately; this
 ordering correction does not establish native CT execution or model acceptance.
+
+
+## Static replica mapping Graph contract
+
+`tests/vllm033/test_hy4_replica_distribution_graph_gpu.py` captures the actual
+v0.33 Core replica mapper after the production static routing publication.
+It covers target/MTP, nearest/locality_fair, both rank doubles and batches
+1/7/2056. Each capture replays three changed logical-ID inputs at fixed
+input/output addresses against an independent scalar hash/placement oracle,
+including invalid IDs and disabled load counters. The existing device selector
+discovers its `hcu` marker. Run this file explicitly in an isolated installed
+HCU prefix with `HCU_V033_VERIFY_INSTALLED=1`; do not reinstall a frozen
+combination implicitly through the complete CI entry point.
+
+The focused gfx936 run passed all24 cases with zero failures/errors/skips.
+All eight complete actual-owner RECORD groups (Core, Torch, Triton, Adapter,
+Plugin, kernel, LightOp and AITER) match before/after. EP membership/model
+allocation are doubles; these component captures are not real EP collectives,
+dynamic-batch model graphs, full checkpoint/HumanEval or throughput evidence,
+and do not qualify gfx836. Original complete-model acceptance remains open.

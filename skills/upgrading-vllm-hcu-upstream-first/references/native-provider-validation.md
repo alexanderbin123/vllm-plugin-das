@@ -272,3 +272,15 @@ Regress target/MTP, rank and ordering policies, repeated publication identity,
 invalid expert IDs and changed inputs against the actual installed Core router.
 CPU hash emulation alone is insufficient; real kernel checks still do not prove
 Graph replay, real EP collectives, full-checkpoint accuracy or throughput.
+
+
+Replica routing Graph validation must capture the actual public Core mapping
+function, then replay changed expert IDs through fixed input and output
+addresses. Warm up before capture, compare each replay with an independent
+scalar token-hash/placement oracle, and check disabled load counters remain
+zero. Cover target/MTP, rank-local ordering and supported batch shapes;
+separate graphs per batch do not qualify dynamic-batch model scheduling.
+Model/EP doubles establish this component contract only, not a real collective
+or full-model Graph. Verify complete shared Core/Torch/Triton/provider RECORDs
+before and after; resolve each dist-info symlink to its actual owner before
+interpreting RECORD-relative paths, including console-script entries.
