@@ -2775,3 +2775,141 @@ def test_paged_softcap_window_admission_preserves_mask_semantics(
         with pytest.raises(NotImplementedError, match="noncausal.*window"):
             wrapped(**kwargs)
         assert not calls
+
+
+@pytest.mark.parametrize("cache_dtype,dim,kv_heads,allowed", [
+    ("fp8_e4m3", 256, 4, False),
+    ("fp8", 256, 4, False),
+    ("fp8_e5m2", 256, 4, True),
+    ("auto", 256, 4, True),
+    ("fp8_e4m3", 128, 4, True),
+    ("fp8_e4m3", 256, 8, True),
+])
+def test_fp8_cascade_admission_and_metadata_for_shared_mtp_prefix(
+    monkeypatch, cache_dtype, dim, kv_heads, allowed,
+):
+    """The heuristic accepts 8 x Q4 / prefix256, but LSE capability wins."""
+    import numpy as np
+
+    flash_attn = _load_hcu_flash_attention_module(monkeypatch)
+    builder = _bare_flash_attention_builder(flash_attn)
+    builder.aot_schedule = False
+    builder.cache_config.cache_dtype = cache_dtype
+    builder.headdim = dim
+    builder.num_heads_q = 24
+    builder.num_heads_kv = kv_heads
+    builder.kv_cache_spec = SimpleNamespace(sliding_window=None)
+    query_lens = np.full(8, 4, dtype=np.int32)
+    selection = dict(
+        common_prefix_len=256, query_lens=query_lens,
+        num_query_heads=24, num_kv_heads=kv_heads,
+        use_alibi=False, use_sliding_window=False,
+        use_local_attention=False, num_sms=120, dcp_world_size=1,
+    )
+    assert flash_attn.use_cascade_attention(**selection)
+    assert builder.use_cascade_attention(**selection) is allowed
+    assert builder.use_cascade_attention(*selection.values()) is allowed
+    cuq = torch.arange(9, dtype=torch.int32) * 4
+    common = SimpleNamespace(
+        num_reqs=8, num_actual_tokens=32, max_query_len=4, max_seq_len=260,
+        query_start_loc=cuq, query_start_loc_cpu=cuq,
+        seq_lens=torch.full((8,), 260, dtype=torch.int32),
+        block_table_tensor=torch.zeros((8, 5), dtype=torch.int32),
+        slot_mapping=torch.arange(32), causal=True,
+    )
+    # A caller supplying a nonzero prefix directly cannot bypass admission.
+    metadata = builder.build(256, common)
+    assert metadata.use_cascade is allowed
+    assert metadata.common_prefix_len == (256 if allowed else 0)
+    assert (metadata.prefix_kv_lens is not None) is allowed
+    if not allowed:
+        assert metadata.cu_prefix_query_lens is None
+        assert metadata.suffix_kv_lens is None
+        torch.testing.assert_close(metadata.seq_lens, common.seq_lens)
+        assert metadata.block_table is common.block_table_tensor
+
+
+@pytest.mark.parametrize("cache_dtype,dim,kv_heads,allowed", [
+    ("fp8_e4m3", 256, 4, False),
+    ("fp8", 256, 4, False),
+    ("fp8_e5m2", 256, 4, True),
+    ("auto", 256, 4, True),
+    ("fp8_e4m3", 128, 4, True),
+    ("fp8_e4m3", 256, 8, True),
+])
+@pytest.mark.parametrize("backend", ["a2a", "ag_rs"])
+@pytest.mark.parametrize("group_size", [1, 2])
+def test_fp8_dcp_lse_admission_before_forward(
+    monkeypatch, cache_dtype, dim, kv_heads, allowed, backend, group_size,
+):
+    from vllm.distributed import parallel_state
+
+    flash_attn = _load_hcu_flash_attention_module(monkeypatch)
+    monkeypatch.setattr(parallel_state, "get_dcp_group", lambda: SimpleNamespace(
+        world_size=group_size, rank_in_group=0,
+    ))
+    monkeypatch.setattr(parallel_state, "get_pcp_group", lambda: SimpleNamespace(
+        world_size=1, rank_in_group=0,
+    ))
+    monkeypatch.setattr(flash_attn, "get_flash_attn_version", lambda **kwargs: 3)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_fp8", lambda: True)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_quant_query_input", lambda: False)
+    config = SimpleNamespace(
+        parallel_config=SimpleNamespace(
+            decode_context_parallel_size=2, dcp_comm_backend=backend,
+        ),
+        model_config=SimpleNamespace(dtype=torch.bfloat16),
+    )
+    monkeypatch.setattr(flash_attn, "get_current_vllm_config_or_none", lambda: config)
+    arguments = dict(
+        num_heads=24, head_size=dim, scale=dim ** -0.5, num_kv_heads=kv_heads,
+        alibi_slopes=None, sliding_window=None, kv_cache_dtype=cache_dtype,
+    )
+    if allowed:
+        impl = flash_attn.FlashAttentionImpl(**arguments)
+        assert impl.can_return_lse_for_decode
+    else:
+        with pytest.raises(ValueError, match="D256/KV4 E4M3.*DCP.*LSE"):
+            flash_attn.FlashAttentionImpl(**arguments)
+        # Metadata construction must reject before allocating DCP buffers too.
+        config.cache_config = SimpleNamespace(cache_dtype=cache_dtype)
+        with pytest.raises(ValueError, match="D256/KV4 E4M3.*DCP.*LSE"):
+            flash_attn.FlashAttentionMetadataBuilder(
+                SimpleNamespace(head_size=dim, num_kv_heads=kv_heads),
+                ["layer"], config, torch.device("cpu"),
+            )
+
+
+def test_fp8_dcp_group_cannot_bypass_lse_admission(monkeypatch):
+    from vllm.distributed import parallel_state
+
+    flash_attn = _load_hcu_flash_attention_module(monkeypatch)
+    monkeypatch.setattr(parallel_state, "get_dcp_group", lambda: SimpleNamespace(
+        world_size=2, rank_in_group=0,
+    ))
+    monkeypatch.setattr(flash_attn, "get_current_vllm_config_or_none", lambda: None)
+    monkeypatch.setattr(flash_attn, "get_flash_attn_version", lambda **kwargs: 3)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_fp8", lambda: True)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_quant_query_input", lambda: False)
+    with pytest.raises(ValueError, match="D256/KV4 E4M3.*DCP.*LSE"):
+        flash_attn.FlashAttentionImpl(
+            num_heads=24, head_size=256, scale=256 ** -0.5, num_kv_heads=4,
+            alibi_slopes=None, sliding_window=None, kv_cache_dtype="fp8_e4m3",
+        )
+
+
+@pytest.mark.parametrize("cache_dtype,expected", [
+    ("fp8_e4m3", False), ("fp8", False), ("fp8_e5m2", True), ("auto", True),
+])
+def test_fp8_local_decode_lse_capability(monkeypatch, cache_dtype, expected):
+    flash_attn = _load_hcu_flash_attention_module(monkeypatch)
+    monkeypatch.setattr(flash_attn, "get_current_vllm_config_or_none", lambda: None)
+    monkeypatch.setattr(flash_attn, "get_flash_attn_version", lambda **kwargs: 3)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_fp8", lambda: True)
+    monkeypatch.setattr(flash_attn, "flash_attn_supports_quant_query_input", lambda: False)
+    impl = flash_attn.FlashAttentionImpl(
+        num_heads=24, head_size=256, scale=256 ** -0.5, num_kv_heads=4,
+        alibi_slopes=None, sliding_window=None, kv_cache_dtype=cache_dtype,
+    )
+    assert impl.dcp_world_size == 1
+    assert impl.can_return_lse_for_decode is expected

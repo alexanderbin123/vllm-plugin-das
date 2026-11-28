@@ -94,9 +94,14 @@ exercise decode, MTP and prefill. Oracle tolerance is atol=0.003, rtol=0.04.
 - Text requests are checked; image/video requests are not qualified here.
 - Configured maximum length and batch size are retained, but 262144-token
   requests and sustained 64-way concurrency are not stress-tested.
-- No claims are made for DCP, attention-probability/LSE output, dropout,
-  per-sequence/per-head non-scalar descales, or other HCU architectures.
-## Recorded results
+- D256/KV4 E4M3 uses an output-only kernel. Cascade attention is disabled
+  for this geometry at both selector and metadata construction; ordinary
+  prefix caching remains enabled. DCP is rejected during implementation and
+  metadata-builder initialization with an actionable LSE capability error.
+- No numerical claims are made for DCP, attention-probability/LSE output,
+  dropout, per-sequence/per-head non-scalar descales, or other HCU architectures.
+
+## Recorded results before the LSE-routing correction (e04c502c)
 
 - CPU runtime contracts: **329 passed, 14 warnings** (9.00 s).
 - Real HCU numerical / changed-input Graph replay: **10 passed** (26.60 s).
@@ -118,3 +123,58 @@ answer; the completed parser check uses a 1024-token budget. This was a test
 budget issue, not an engine failure. A D128 long-prefill probe with deliberately
 noncontiguous output still hits the unchanged vendor varlen rejection; that
 non-PA geometry is not claimed by this qualification.
+
+## LSE-routing correction after review of e04c502c
+
+The review identified a real routing regression: the normal cascade heuristic
+accepts eight requests with query length four, 24 Q heads / four KV heads and
+a 256-token shared prefix. Both shared-prefix and suffix calls require LSE,
+but the D256/KV4 E4M3 stride-aware kernel only returns attention output. The
+previous HTTP concurrency test did not force this metadata shape and did not
+qualify cascade attention.
+
+The correction shares the E4M3 geometry predicate between dispatch and
+capability selection. The metadata builder declines cascade optimization and
+also clears an explicitly supplied common prefix before building metadata.
+Full sequence lengths and block tables remain unchanged, so the ordinary
+causal path still attends to the cached prefix. The implementation advertises
+no decode-LSE capability for this geometry. DCP size greater than one is
+rejected during initialization, using either configured topology or the
+initialized group, rather than failing in kernel dispatch. E5M2, B16, D128
+and other KV-head geometries retain their existing admission. This is not an
+LSE implementation and does not re-enable the numerically unqualified native
+D256/KV4 E4M3 kernel.
+
+Review-specific validation on 10.16.1.30 / zb_028_faban_torch_1129 / HCU1:
+
+- Original e04c502c with the new routing tests: **11 failed, 20 passed**.
+  Failures reproduce missing cascade/DCP admission; no hardware-numerical
+  conclusion is drawn from those CPU tests.
+- Corrected runtime contracts, E4M3 dtype tests and CI-selector contracts:
+  **494 passed, 14 warnings**. This includes both positional/keyword cascade
+  selection, direct metadata construction, DCP a2a/ag_rs admission, configured
+  DCP before group initialization, initialized DCP without a config, and
+  unaffected-geometry controls.
+- Real-HCU FP32-oracle and changed-input Graph replay: **18 passed**.
+  Eight new cases use the exact eight-request / Q4 / prefix256 geometry,
+  HND and NHD layouts, 64- and 128-token pages, BF16 and FP8 queries,
+  non-unit scales, actual metadata construction and implementation forward,
+  and noncontiguous output. Replay changes queries, page IDs and lengths.
+- The corrected revision again completes full Qwen3.6-27B startup and Graph
+  capture with the original TP1 / HND / E4M3 / MTP3 / prefix-mamba-cache /
+  16384 batched tokens / 64 sequences configuration. All **15 HTTP requests**
+  pass again (chat, long decode, repeated prefixes, eight concurrent requests,
+  reasoning parser and automatic tool calls). These are service smoke checks;
+  the exact cascade-admission shape is covered by the dedicated tests above.
+- Validated installed source SHA256:
+  - fa_utils.py: `ce17c7e5e3552f2d3c0d28ae271f425f4a3c3bd8361a46339bb77f45ae5aece0`
+  - flash_attn.py: `877f0de6124ffae06fb8e4a43f65fed3b3aec452da7f0f1faa76ab8b203e54f9`
+- The previously failing HCU CI run 46150726304 reported an unregistered
+  hardware test file. The file is now registered in the gfx938 accuracy lane;
+  local CI registry/selector contracts pass. This does not claim a successful
+  complete remote CI run.
+
+The first expanded local CI-selector invocation encountered CRLF in unchanged
+Bash scripts transferred from the Windows checkout (six failures). Converting
+only the remote snapshot's shell scripts to LF, matching Git contents, yielded
+the passing 494-test result; repository Bash scripts were not changed.

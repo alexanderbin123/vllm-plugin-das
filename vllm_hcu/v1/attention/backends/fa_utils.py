@@ -454,6 +454,17 @@ def _run_stride_aware_paged_attention(arguments: dict[str, Any]) -> Any:
     return native_output
 
 
+def requires_e4m3_stride_aware_paged_attention(
+    kv_cache_dtype: str | torch.dtype, head_size: int, num_kv_heads: int,
+) -> bool:
+    """This geometry needs Core's output-only kernel, not native FP8 PA."""
+    return (
+        kv_cache_dtype in ("fp8", "fp8_e4m3", torch.float8_e4m3fn)
+        and head_size == 256
+        and num_kv_heads == 4
+    )
+
+
 def run_paged_attention(
     vendor: Callable[..., Any], kwargs: dict[str, Any]
 ) -> Any:
@@ -464,8 +475,8 @@ def run_paged_attention(
         # PR #551 also excludes this E4M3 geometry from native PA: its
         # contiguous control fails non-unit-scale accuracy qualification.
         # Core's FP8 kernel keeps the original strided pages and applies scales.
-        if key_cache.dtype == torch.float8_e4m3fn and (
-            key_cache.shape[-1] == 256 and kv_heads == 4
+        if requires_e4m3_stride_aware_paged_attention(
+            key_cache.dtype, key_cache.shape[-1], kv_heads,
         ):
             return _run_stride_aware_paged_attention(kwargs)
     # Match the vendor's 64-token direct-PA admission, including uniform MTP.

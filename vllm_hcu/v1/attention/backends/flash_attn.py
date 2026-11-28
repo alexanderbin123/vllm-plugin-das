@@ -30,6 +30,7 @@ from vllm_hcu.v1.attention.backends.fa_utils import (
     get_flash_attn_version,
     is_fa_version_supported,
     is_flash_attn_varlen_func_available,
+    requires_e4m3_stride_aware_paged_attention,
 )
 from vllm_hcu.v1.attention.kv_cache_layout import get_kv_cache_layout
 from vllm_hcu.platforms import envs as henvs
@@ -475,6 +476,19 @@ def _get_native_sliding_window(
     return list(window) if window is not None else None
 
 
+def _validate_fp8_dcp_lse_support(
+    kv_cache_dtype: str, head_size: int, num_kv_heads: int, dcp_world_size: int,
+) -> None:
+    if dcp_world_size > 1 and requires_e4m3_stride_aware_paged_attention(
+        kv_cache_dtype, head_size, num_kv_heads,
+    ):
+        raise ValueError(
+            "HCU FlashAttention D256/KV4 E4M3 does not support DCP: "
+            "the stride-aware paged-attention kernel cannot return LSE. "
+            "Use decode_context_parallel_size=1 or a supported KV cache dtype."
+        )
+
+
 class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetadata]):
     # FA3:
     # Supports full cudagraphs for all cases.
@@ -538,6 +552,11 @@ class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetad
                 "R-SWA requires rswa_prefix_lens/rswa_window support in the "
                 "HCU FlashAttention native wrapper"
             )
+        _validate_fp8_dcp_lse_support(
+            vllm_config.cache_config.cache_dtype,
+            kv_cache_spec.head_size, kv_cache_spec.num_kv_heads,
+            vllm_config.parallel_config.decode_context_parallel_size,
+        )
         super().__init__(kv_cache_spec, layer_names, vllm_config, device)
         if _SPLIT_PD:
             # Decode-first batch reordering gives the split a contiguous
@@ -722,6 +741,12 @@ class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetad
                 )
             return None
 
+        # Do not build LSE-dependent metadata for the output-only FP8 path,
+        # even if a caller supplies a prefix without consulting the selector.
+        if requires_e4m3_stride_aware_paged_attention(
+            self.cache_config.cache_dtype, self.headdim, self.num_heads_kv,
+        ):
+            common_prefix_len = 0
         use_cascade = common_prefix_len > 0
         max_dcp_context_kv_len = 0
         dcp_context_kv_lens = None
@@ -879,6 +904,10 @@ class FlashAttentionMetadataBuilder(AttentionMetadataBuilder[FlashAttentionMetad
         return new_metadata
 
     def use_cascade_attention(self, *args, **kwargs) -> bool:
+        if requires_e4m3_stride_aware_paged_attention(
+            self.cache_config.cache_dtype, self.headdim, self.num_heads_kv,
+        ):
+            return False
         return use_cascade_attention(*args, **kwargs)
 
 
@@ -959,6 +988,17 @@ class FlashAttentionImpl(AttentionImpl):
         )
 
         vllm_config = get_current_vllm_config_or_none()
+        self.can_return_lse_for_decode = not requires_e4m3_stride_aware_paged_attention(
+            self.kv_cache_dtype, self.head_size, self.num_kv_heads,
+        )
+        configured_dcp_size = (
+            vllm_config.parallel_config.decode_context_parallel_size
+            if vllm_config is not None else 1
+        )
+        _validate_fp8_dcp_lse_support(
+            self.kv_cache_dtype, self.head_size, self.num_kv_heads,
+            max(self.dcp_world_size, configured_dcp_size),
+        )
         dcp_a2a = (
             vllm_config is not None
             and vllm_config.parallel_config.decode_context_parallel_size > 1
